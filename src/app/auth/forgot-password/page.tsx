@@ -1,7 +1,7 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -9,11 +9,17 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { forgotPasswordSchema } from "@/lib/schemas/auth.schema";
 import { z } from "zod";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "@/lib/store";
+import { forgotPassword, clearError } from "@/lib/slices/authSlice";
+import { toast } from "sonner";
 
 type ForgotFormData = z.infer<typeof forgotPasswordSchema>;
 
 export default function ForgotPasswordForm() {
   const router = useRouter();
+  const dispatch = useDispatch<AppDispatch>();
+  const { loading, error } = useSelector((state: RootState) => state.auth);
 
   const {
     register,
@@ -23,9 +29,15 @@ export default function ForgotPasswordForm() {
     resolver: zodResolver(forgotPasswordSchema),
   });
 
-  const onSubmit = (data: ForgotFormData) => {
-    console.log("FORGOT PASSWORD:", data);
-    router.push("/auth/verify-otp");
+  const onSubmit = async (data: ForgotFormData) => {
+    dispatch(clearError());
+    const result = await dispatch(forgotPassword(data));
+    if (forgotPassword.fulfilled.match(result)) {
+      toast.success(result.payload.message || "Reset code sent successfully");
+      router.push(`/auth/verify-otp?email=${encodeURIComponent(data.email)}`);
+    } else {
+      toast.error(result.payload as string || "Failed to send reset code");
+    }
   };
 
   return (
@@ -67,15 +79,19 @@ export default function ForgotPasswordForm() {
           {errors.email && (
             <div className="text-red-600 text-sm">{errors.email.message}</div>
           )}
+          {error && (
+            <div className="text-red-600 text-sm">{error}</div>
+          )}
         </div>
       </div>
 
         {/* Button */}
         <button
           type="submit"
-          className="w-[388px] mx-auto block h-[48px] bg-[#005864] rounded-[12px] text-white text-[16px] font-[600] capitalize hover:opacity-95 active:scale-[0.99]"
+          disabled={loading}
+          className="w-[388px] mx-auto flex items-center justify-center h-[48px] bg-[#005864] rounded-[12px] text-white text-[16px] font-[600] capitalize hover:opacity-95 active:scale-[0.99] disabled:opacity-50"
         >
-          Send OTP Code
+          {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Send OTP Code"}
         </button>
       </form>
     </div>

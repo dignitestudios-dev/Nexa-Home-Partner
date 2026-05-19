@@ -1,23 +1,49 @@
 "use client";
 
 import { Suspense, useEffect, useRef, useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+
 import { otpSchema } from "@/lib/schemas/auth.schema";
 import { z } from "zod";
+
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "@/lib/store";
+
+import {
+  verifyEmail,
+  clearError,
+  forgotPassword,
+} from "@/lib/slices/authSlice";
+
+import { toast } from "sonner";
 
 type OtpFormData = z.infer<typeof otpSchema>;
 
 function VerificationContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const [timer, setTimer] = useState(30);
-  const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
-  const email = searchParams.get("email") || "lucasbenjamin@gmail.com";
 
+  const dispatch = useDispatch<AppDispatch>();
+
+  const searchParams = useSearchParams();
+
+  const { loading, error } = useSelector(
+    (state: RootState) => state.auth
+  );
+
+  /* ---------------- STATES ---------------- */
+  const [timer, setTimer] = useState(30);
+  const [resendLoading, setResendLoading] = useState(false);
+
+  const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
+
+  const email = searchParams.get("email") || "";
+
+  /* ---------------- FORM ---------------- */
   const {
     setValue,
     handleSubmit,
@@ -30,24 +56,31 @@ function VerificationContent() {
     },
   });
 
-  const otp = watch("otp");
+  const otp = watch("otp") || "";
+
+  /* =========================================================
+     OTP INPUTS
+  ========================================================= */
 
   const handleChange = (value: string, index: number) => {
     if (!/^\d*$/.test(value)) return;
 
     const current = otp.split("");
+
     current[index] = value.slice(-1);
 
     const newOtp = current.join("").padEnd(5, "");
+
     setValue("otp", newOtp);
 
     if (value && index < 4) {
       inputRefs.current[index + 1]?.focus();
     }
   };
+
   const handleKeyDown = (
     e: React.KeyboardEvent<HTMLInputElement>,
-    index: number,
+    index: number
   ) => {
     const otpArray = otp.split("");
 
@@ -55,12 +88,12 @@ function VerificationContent() {
       e.preventDefault();
 
       if (otpArray[index]) {
-        // clear current
         otpArray[index] = "";
+
         setValue("otp", otpArray.join(""));
       } else if (index > 0) {
-        // move back + clear previous
         otpArray[index - 1] = "";
+
         setValue("otp", otpArray.join(""));
 
         inputRefs.current[index - 1]?.focus();
@@ -76,33 +109,107 @@ function VerificationContent() {
     }
   };
 
-  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+  const handlePaste = (
+    e: React.ClipboardEvent<HTMLInputElement>
+  ) => {
     e.preventDefault();
+
     const pastedText = e.clipboardData.getData("text");
+
     const digits = pastedText.replace(/\D/g, "").slice(0, 5);
+
     if (!digits) return;
 
     const nextOtp = digits.padEnd(5, "");
+
     setValue("otp", nextOtp);
 
     const nextFocusIndex = Math.min(digits.length, 4);
+
     inputRefs.current[nextFocusIndex]?.focus();
   };
 
-  const handleSubmitOtp = (data: OtpFormData) => {
-    console.log("OTP SUBMIT:", data);
-    router.push("/auth/change-password");
+  /* =========================================================
+     VERIFY OTP
+  ========================================================= */
+
+  const handleSubmitOtp = async (data: OtpFormData) => {
+    dispatch(clearError());
+
+    const result = await dispatch(
+      verifyEmail({
+        email,
+        otp: data.otp,
+        role: "partner",
+        mode: "reset",
+      })
+    );
+
+    if (verifyEmail.fulfilled.match(result)) {
+      toast.success(
+        result.payload?.message ||
+          "OTP verified successfully"
+      );
+      router.push("/auth/change-password");
+    } else {
+      toast.error(
+        (result.payload as string) ||
+          "OTP verification failed"
+      );
+    }
   };
+
+  /* =========================================================
+     RESEND OTP
+  ========================================================= */
+
+  const handleResendOtp = async () => {
+    console.log(email, 'email');
+    try {
+      setResendLoading(true);
+
+      const result = await dispatch(
+        forgotPassword({ email })
+      );
+
+      if (forgotPassword.fulfilled.match(result)) {
+        toast.success(
+          result.payload?.message ||
+            "OTP sent successfully"
+        );
+
+        // restart timer
+        setTimer(30);
+      } else {
+        toast.error(
+          (result.payload as string) ||
+            "Failed to resend OTP"
+        );
+      }
+    } catch (error) {
+      toast.error("Something went wrong");
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
+  /* =========================================================
+     TIMER
+  ========================================================= */
 
   useEffect(() => {
     if (timer > 0) {
-      const interval = setInterval(() => setTimer((p) => p - 1), 1000);
+      const interval = setInterval(() => {
+        setTimer((prev) => prev - 1);
+      }, 1000);
+
       return () => clearInterval(interval);
     }
   }, [timer]);
 
   return (
     <div className="relative w-full self-stretch min-h-[560px]">
+      {/* BACK BUTTON */}
       <Link
         href="/auth/forgot-password"
         className="absolute left-0 top-0 inline-flex items-center justify-center w-12 h-12 rounded-full text-[#181818] hover:bg-black/5"
@@ -110,10 +217,12 @@ function VerificationContent() {
         <ArrowLeft size={24} />
       </Link>
 
+      {/* FORM */}
       <form
         onSubmit={handleSubmit(handleSubmitOtp)}
         className="w-full max-w-[496px] min-h-[560px] mx-auto"
       >
+        {/* HEADER */}
         <div className="text-center mt-[122px]">
           <h1 className="text-[36px] leading-[45px] tracking-[-0.82px] font-semibold text-[#1C1C1C]">
             Verification
@@ -121,11 +230,13 @@ function VerificationContent() {
 
           <p className="mt-2 text-[16px] leading-[22px] text-black/80">
             Enter the code sent to{" "}
-            <span className="text-[#005864]">{email}</span>
+            <span className="text-[#005864]">
+              {email}
+            </span>
           </p>
         </div>
 
-        {/* OTP Inputs */}
+        {/* OTP INPUTS */}
         <div className="mt-[68px] flex justify-center gap-4">
           {Array(5)
             .fill(0)
@@ -139,38 +250,68 @@ function VerificationContent() {
                 type="text"
                 maxLength={1}
                 inputMode="numeric"
-                onChange={(e) => handleChange(e.target.value, i)}
-                onKeyDown={(e) => handleKeyDown(e, i)}
+                onChange={(e) =>
+                  handleChange(e.target.value, i)
+                }
+                onKeyDown={(e) =>
+                  handleKeyDown(e, i)
+                }
                 onPaste={handlePaste}
                 className="w-[60px] h-[60px] text-center text-[24px] font-semibold rounded-[12px] bg-[#F8F8F8] border border-transparent focus:border-[#005864] focus:outline-none text-[#005864]"
               />
             ))}
         </div>
 
+        {/* ERRORS */}
         <div className="min-h-[20px] mt-2 text-center">
           {errors.otp && (
-            <div className="text-red-600 text-sm">{errors.otp.message}</div>
+            <div className="text-red-600 text-sm">
+              {errors.otp.message}
+            </div>
+          )}
+
+          {error && (
+            <div className="text-red-600 text-sm">
+              {error}
+            </div>
           )}
         </div>
 
+        {/* RESEND */}
         <p className="text-[16px] leading-[22px] text-black/80 mt-4 text-center">
           Didn&apos;t receive code?{" "}
+
           <button
             type="button"
-            disabled={timer > 0}
+            disabled={timer > 0 || resendLoading}
+            onClick={handleResendOtp}
             className={`font-medium text-[#005864] ${
-              timer > 0 ? "opacity-50 cursor-not-allowed" : "hover:underline"
+              timer > 0 || resendLoading
+                ? "opacity-50 cursor-not-allowed"
+                : "hover:underline"
             }`}
           >
-            {timer > 0 ? `Resend OTP in ${timer}s` : "Resend OTP"}
+            {resendLoading ? (
+              "Sending..."
+            ) : timer > 0 ? (
+              `Resend OTP in ${timer}s`
+            ) : (
+              "Resend OTP"
+            )}
           </button>
         </p>
 
+        {/* VERIFY BUTTON */}
         <button
           type="submit"
-          className="w-[388px] mx-auto block h-[48px] mt-8 bg-[#005864] rounded-[12px] text-white text-[16px] font-[600] capitalize hover:opacity-95 active:scale-[0.99]"
+          disabled={loading}
+          className="w-[388px] mx-auto flex items-center justify-center h-[48px] mt-8 bg-[#005864] rounded-[12px] text-white text-[16px] font-[600] capitalize hover:opacity-95 active:scale-[0.99] disabled:opacity-50"
         >
-          Verify
+          {loading ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : (
+            "Verify"
+          )}
         </button>
       </form>
     </div>

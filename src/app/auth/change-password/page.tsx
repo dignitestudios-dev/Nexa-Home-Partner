@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Loader2 } from "lucide-react";
 import Link from "next/link";
 
 import { useForm } from "react-hook-form";
@@ -9,10 +9,19 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { resetPasswordSchema } from "@/lib/schemas/auth.schema";
 import { z } from "zod";
 import { PasswordUpdatedModal } from "@/components/auth/passwordupdatemodal";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "@/lib/store";
+import { updatePassword, clearError } from "@/lib/slices/authSlice";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 type ResetPasswordSchema = z.infer<typeof resetPasswordSchema>;
 
 export default function ChangePasswordPage() {
+  const dispatch = useDispatch<AppDispatch>();
+  const { loading, error } = useSelector((state: RootState) => state.auth);
+  const router = useRouter();
+
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordUpdated, setPasswordUpdated] = useState(false);
@@ -22,11 +31,18 @@ export default function ChangePasswordPage() {
     formState: { errors },
   } = useForm<ResetPasswordSchema>({
     resolver: zodResolver(resetPasswordSchema),
-  });
+  })
 
-  const onSubmit = (data: ResetPasswordSchema) => {
-    console.log("PASSWORD DATA:", data);
-    setPasswordUpdated(true);
+  const onSubmit = async (data: ResetPasswordSchema) => {
+    dispatch(clearError());
+    const result = await dispatch(updatePassword({ password: data.password }));
+    if (updatePassword.fulfilled.match(result)) {
+      toast.success("Password updated successfully");
+      router.push("/auth/login");
+      setPasswordUpdated(true);
+    } else {
+      toast.error(result.payload as string || "Failed to update password");
+    }
   };
 
   return (
@@ -112,15 +128,19 @@ export default function ChangePasswordPage() {
                   {errors.confirmPassword.message}
                 </div>
               )}
+              {error && (
+                <div className="text-red-600 text-sm">{error}</div>
+              )}
             </div>
           </div>
 
           {/* Button */}
           <button
             type="submit"
-            className="w-[388px] mx-auto block h-[48px] mt-3 bg-[#005864] rounded-[12px] text-white text-[16px] font-[600] capitalize hover:opacity-95 active:scale-[0.99]"
+            disabled={loading}
+            className="w-[388px] mx-auto flex items-center justify-center h-[48px] mt-3 bg-[#005864] rounded-[12px] text-white text-[16px] font-[600] capitalize hover:opacity-95 active:scale-[0.99] disabled:opacity-50"
           >
-            Update Password
+            {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Update Password"}
           </button>
         </form>
       </div>

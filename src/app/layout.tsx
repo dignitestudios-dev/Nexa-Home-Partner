@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
- 
+import StoreProvider from "./StoreProvider";
+import { Toaster } from "sonner";
+import AuthProvider from "@/components/AuthProvider";
+
 export const metadata: Metadata = {
   title: "NexaHome Partner | CRM & Business Intelligence Dashboard",
   description:
@@ -9,7 +12,7 @@ export const metadata: Metadata = {
     icon: "/asset/favicon.png",
   },
 };
- 
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -17,9 +20,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full antialiased font-sans">
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <StoreProvider>
+          <AuthProvider>
+            {children}
+            <Toaster position="top-center" richColors />
+          </AuthProvider>
+        </StoreProvider>
+      </body>
     </html>
   );
 }
- 
- 

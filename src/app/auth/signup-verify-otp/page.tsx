@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useRef, useState } from "react";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -9,16 +9,23 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { otpSchema } from "@/lib/schemas/auth.schema";
 import { z } from "zod";
 import { AccountCreatedModal } from "@/components/auth/account-created-modal";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "@/lib/store";
+import { verifyEmail, clearError, resendOtp } from "@/lib/slices/authSlice";
+import { toast } from "sonner";
 
 type OtpFormData = z.infer<typeof otpSchema>;
 
 function SignupVerificationContent() {
   const router = useRouter();
+  const dispatch = useDispatch<AppDispatch>();
   const searchParams = useSearchParams();
+  const { loading, error } = useSelector((state: RootState) => state.auth);
+
   const [timer, setTimer] = useState(30);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
-  const email = searchParams.get("email") || "lucasbenjamin@gmail.com";
+  const email = searchParams.get("email" as string) ||  localStorage.getItem("tempEmail" as string);
 
   const {
     setValue,
@@ -58,9 +65,11 @@ function SignupVerificationContent() {
       e.preventDefault();
 
       if (otpArray[index]) {
+        // clear current
         otpArray[index] = "";
         setValue("otp", otpArray.join(""));
       } else if (index > 0) {
+        // move back + clear previous
         otpArray[index - 1] = "";
         setValue("otp", otpArray.join(""));
         inputRefs.current[index - 1]?.focus();
@@ -88,11 +97,32 @@ function SignupVerificationContent() {
     const nextFocusIndex = Math.min(digits.length, 4);
     inputRefs.current[nextFocusIndex]?.focus();
   };
+const handleSubmitOtp = async (data: OtpFormData) => {
+  dispatch(clearError());
+  
+  const result = await dispatch(verifyEmail({
+    email: email || "",
+    otp: data.otp,
+    role: "partner",
+    mode: "verify"
+  }));
 
-  const handleSubmitOtp = (data: OtpFormData) => {
-    console.log("SIGNUP OTP SUBMIT:", data);
-    setIsSuccessModalOpen(true);
-  };
+  if (verifyEmail.fulfilled.match(result)) {
+    const user = result.payload.data.user;
+  console.log(user,"sadsadsdsadsad");
+  if(user.isProfileCompleted === false){
+    router.push("/auth/register");
+  }else{
+    alert("Profile not completed");
+    router.push("/app/dashboard");
+  }
+  
+} else {
+    
+    toast.error(result.payload as string || "Verification failed");
+      
+  }
+};
 
   useEffect(() => {
     if (timer > 0) {
@@ -106,16 +136,32 @@ function SignupVerificationContent() {
 
     const redirectTimer = setTimeout(() => {
       setIsSuccessModalOpen(false);
-      router.push("/auth/login");
-    }, 3500);
+      router.push("/app/dashboard");
+    }, 7500);
 
     return () => clearTimeout(redirectTimer);
   }, [isSuccessModalOpen, router]);
+const handleResendOtp = async () => {
+  if (!email) {
+    toast.error("Email not found");
+    return;
+  }
 
+  const result = await dispatch(resendOtp(email));
+
+  if (resendOtp.fulfilled.match(result)) {
+    toast.success(result.payload?.message || "OTP resent successfully");
+
+    // reset timer
+    setTimer(30);
+  } else {
+    toast.error((result.payload as string) || "Failed to resend OTP");
+  }
+};
   return (
     <div className="relative w-full self-stretch min-h-[560px]">
       <Link
-        href="/auth/register"
+        href="/auth/login"
         className="absolute left-0 top-0 inline-flex items-center justify-center w-12 h-12 rounded-full text-[#181818] hover:bg-black/5"
       >
         <ArrowLeft size={24} />
@@ -161,6 +207,9 @@ function SignupVerificationContent() {
           {errors.otp && (
             <div className="text-red-600 text-sm">{errors.otp.message}</div>
           )}
+          {error && (
+            <div className="text-red-600 text-sm">{error}</div>
+          )}
         </div>
 
         <p className="text-[16px] leading-[22px] text-black/80 mt-4 text-center">
@@ -168,6 +217,7 @@ function SignupVerificationContent() {
           <button
             type="button"
             disabled={timer > 0}
+            onClick={handleResendOtp}
             className={`font-medium text-[#005864] ${
               timer > 0 ? "opacity-50 cursor-not-allowed" : "hover:underline"
             }`}
@@ -178,9 +228,10 @@ function SignupVerificationContent() {
 
         <button
           type="submit"
-          className="w-[388px] mx-auto block h-[48px] mt-8 bg-[#005864] rounded-[12px] text-white text-[16px] font-[600] capitalize hover:opacity-95 active:scale-[0.99]"
+          disabled={loading}
+          className="w-[388px] mx-auto flex items-center justify-center h-[48px] mt-8 bg-[#005864] rounded-[12px] text-white text-[16px] font-[600] capitalize hover:opacity-95 active:scale-[0.99] disabled:opacity-50"
         >
-          Verify OTP
+          {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Verify OTP"}
         </button>
       </form>
 
@@ -188,7 +239,7 @@ function SignupVerificationContent() {
         open={isSuccessModalOpen}
         onClose={() => {
           setIsSuccessModalOpen(false);
-          router.push("/auth/login");
+          router.push("/app/dashboard");
         }}
       />
     </div>
@@ -202,4 +253,3 @@ export default function SignupVerificationPage() {
     </Suspense>
   );
 }
-
