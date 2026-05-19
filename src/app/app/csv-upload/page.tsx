@@ -10,6 +10,8 @@ import {
   Search,
   Upload,
   X,
+  Loader2,
+  Download,
 } from "lucide-react";
 import {
   Dialog,
@@ -18,35 +20,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "@/lib/store";
+import { fetchCsvTemplate, fetchInvitations, uploadCsv } from "@/lib/slices/csvSlice";
+import { toast } from "sonner";
 
-type CsvUser = {
-  id: string;
-  name: string;
-  email: string;
-  phoneNumber: string;
-  category: string;
-  avatar: string;
-  createdAt: string;
-};
+
 
 const categories = ["Category A", "Category B", "Category C", "Category D", "Category E", "Category F"];
 const ITEMS_PER_PAGE = 10;
 
-const csvRows: CsvUser[] = Array.from({ length: 12 }, (_, index) => {
-  const category = categories[index % categories.length];
-  const day = String(10 + index).padStart(2, "0");
-  return {
-    id: String(index + 1).padStart(2, "0"),
-    name: `Jack Martian ${index + 1}`,
-    email: `jack${index + 1}.martian@gmail.com`,
-    phoneNumber: `+1 987 9809 ${String(9800 + index).slice(-4)}`,
-    category,
-    avatar: `https://i.pravatar.cc/86?img=${10 + index}`,
-    createdAt: `2025-12-${day}`,
-  };
-});
-
 export default function CsvUploadPage() {
+  const dispatch = useDispatch<AppDispatch>();
+  const { invitations, total, loading, error, uploadError } = useSelector((state: RootState) => state.csv);
+
   const [searchValue, setSearchValue] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -57,54 +44,124 @@ export default function CsvUploadPage() {
   const [isUploadSuccessOpen, setIsUploadSuccessOpen] = useState(false);
   const [pendingCsvFile, setPendingCsvFile] = useState<File | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [ValidErr, setValidErr] = useState(false);
+  console.log("CSVdasdsadsa upload failed:123", uploadError);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchValue);
+    }, 500);
 
+    return () => clearTimeout(timer);
+  }, [searchValue]);
   const openFilterDrawer = () => {
     setPendingCategories(appliedCategories);
     setIsFilterOpen(true);
   };
 
-  const filteredRows = useMemo(() => {
-    const query = searchValue.trim().toLowerCase();
-
-    return csvRows.filter((row) => {
-      const matchesSearch =
-        query.length === 0 ||
-        row.name.toLowerCase().includes(query) ||
-        row.email.toLowerCase().includes(query) ||
-        row.phoneNumber.toLowerCase().includes(query);
-
-      if (!matchesSearch) return false;
-      if (selectedDate && row.createdAt !== selectedDate) return false;
-      if (appliedCategories.length > 0 && !appliedCategories.includes(row.category)) return false;
-      return true;
-    });
-  }, [searchValue, selectedDate, appliedCategories]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredRows.length / ITEMS_PER_PAGE));
-  const safePage = Math.min(currentPage, totalPages);
-  const paginatedRows = filteredRows.slice(
-    (safePage - 1) * ITEMS_PER_PAGE,
-    safePage * ITEMS_PER_PAGE,
-  );
-
+  useEffect(() => {
+    dispatch(
+      fetchInvitations({
+        page: currentPage,
+        limit: ITEMS_PER_PAGE,
+        status: "pending",
+        search: debouncedSearch,
+      })
+    );
+  }, [dispatch, currentPage, debouncedSearch]);
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchValue, selectedDate, appliedCategories]);
+  }, [debouncedSearch]);
+
+  const handleFileUpload = (page = 1, limit = ITEMS_PER_PAGE) => {
+    if (!pendingCsvFile) return;
+
+    dispatch(uploadCsv(pendingCsvFile))
+      .unwrap()
+      .then(() => {
+        setIsUploadSuccessOpen(true);
+        setUploadedFileName(pendingCsvFile.name);
+        setPendingCsvFile(null);
+        setIsCsvModalOpen(false);
+      })
+      .catch((error: any) => {
+        console.log("CSVdasdsadsa upload failed:", error);
+        if (error.status === 400) {
+          setValidErr(true);
+        }
+        toast.error(error,);
+        setPendingCsvFile(null);
+
+
+      });
+    dispatch(
+      fetchInvitations({
+        page: page,
+        limit: limit,
+        status: "pending",
+        search: searchValue,
+      })
+    );
+  };
+
+  const handleDownloadTemplate = () => {
+    dispatch(fetchCsvTemplate())
+      .unwrap()
+      .then((response) => {
+        const blob = new Blob([response], { type: "text/csv" });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", "template.csv");
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+      })
+      .catch((error) => {
+        console.error("CSV template download failed:", error);
+      });
+  };
+
+  const displayRows = useMemo(() => {
+    return invitations.filter((row) => {
+      if (selectedDate) {
+        const rowDate = row.createdAt ? row.createdAt.split("T")[0] : "";
+        if (rowDate !== selectedDate) return false;
+      }
+      if (appliedCategories.length > 0 && row.category && !appliedCategories.includes(row.category)) {
+        return false;
+      }
+      return true;
+    });
+  }, [invitations, selectedDate, appliedCategories]);
+
+  const totalPages = Math.max(1, Math.ceil(total / ITEMS_PER_PAGE));
+  const safePage = Math.min(currentPage, totalPages);
 
   return (
     <div className="relative min-h-screen overflow-hidden rounded-[50px] bg-[#EAFCFF] p-6">
-      
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-[30px] leading-[45px] font-[600] text-[#1A1A1A] mb-6">CSV Upload</h1>
-
-        <button
-          type="button"
-          onClick={() => setIsCsvModalOpen(true)}
-          className="inline-flex h-[38px] items-center gap-2 rounded-[12px] bg-[#005864] px-4 text-[14px] font-semibold text-white"
-        >
-          <Upload size={16} />
-          CSV Upload
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsCsvModalOpen(true)}
+            className="inline-flex h-[38px] items-center gap-2 rounded-[12px] bg-[#005864] px-4 text-[14px] font-semibold text-white"
+          >
+            <Upload size={16} />
+            CSV Upload
+          </button>
+          <button
+            type="button"
+            onClick={handleDownloadTemplate}
+            className="inline-flex h-[38px] items-center gap-2 rounded-[12px] bg-[#005864] px-4 text-[14px] font-semibold text-white"
+          >
+            <Download size={16} />
+            CSV Template
+          </button>
+        </div>
       </div>
 
       <div className="mt-5 flex flex-wrap items-center justify-end gap-2">
@@ -118,7 +175,7 @@ export default function CsvUploadPage() {
           <Search size={20} className="text-black/80" />
         </div>
 
-        <label className="relative inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-[10px] bg-[#005864] text-white shadow-[0px_4px_45.9px_6px_rgba(0,88,100,0.08)]">
+        {/* <label className="relative inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-[10px] bg-[#005864] text-white shadow-[0px_4px_45.9px_6px_rgba(0,88,100,0.08)]">
           <Calendar size={20} />
           <input
             type="date"
@@ -134,11 +191,11 @@ export default function CsvUploadPage() {
           className="inline-flex h-11 w-11 items-center justify-center rounded-[10px] bg-[#005864] text-white shadow-[0px_4px_45.9px_6px_rgba(0,88,100,0.08)]"
         >
           <Filter size={20} />
-        </button>
+        </button> */}
       </div>
 
       {uploadedFileName ? (
-        <p className="mt-3 text-[13px] text-[#005864]">Uploaded: {uploadedFileName}</p>
+        <p className="mt-3 text-[13px] text-[#005864]">Uploaded: {uploadedFileName} <span className="text-red-500">{error}</span></p>
       ) : null}
 
       <section className="mt-4 rounded-[24px] bg-white">
@@ -148,25 +205,36 @@ export default function CsvUploadPage() {
           <span>Phone Number</span>
         </div>
 
-        <div className="px-8 py-4">
-          {paginatedRows.map((row, index) => (
-            <div
-              key={row.id}
-              className={`grid grid-cols-[1.3fr_1.4fr_1fr] items-center py-4 ${
-                index !== paginatedRows.length - 1 ? "border-b border-[rgba(238,238,238,0.93)]" : ""
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <img src={row.avatar} alt={row.name} className="h-[43px] w-[43px] rounded-full object-cover" />
-                <span className="text-[16px] text-black">{row.name}</span>
-              </div>
-              <span className="text-[16px] text-black">{row.email}</span>
-              <span className="text-[16px] text-black">{row.phoneNumber}</span>
+        <div className="px-8 py-4 relative min-h-[120px]">
+          {loading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-white/50 z-10">
+              <Loader2 className="h-8 w-8 animate-spin text-[#005864]" />
             </div>
-          ))}
+          )}
 
-          {filteredRows.length === 0 ? (
-            <p className="py-14 text-center text-[15px] text-black/60">No records found for the selected filters.</p>
+          {displayRows.map((row, index) => {
+            const avatarUrl = row.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(row.name || "User")}&background=EAFCFF&color=005864`;
+            const phone = row.phoneNumber || row.phone || "";
+            return (
+              <div
+                key={row.id}
+                className={`grid grid-cols-[1.3fr_1.4fr_1fr] items-center py-4 ${index !== displayRows.length - 1 ? "border-b border-[rgba(238,238,238,0.93)]" : ""
+                  }`}
+              >
+                <div className="flex items-center gap-3">
+                  <img src={avatarUrl} alt={row.name} className="h-[43px] w-[43px] rounded-full object-cover" />
+                  <span className="text-[16px] text-black">{row.name}</span>
+                </div>
+                <span className="text-[16px] text-black">{row.email}</span>
+                <span className="text-[16px] text-black">{phone}</span>
+              </div>
+            );
+          })}
+
+          {!loading && displayRows.length === 0 ? (
+            <p className="py-14 text-center text-[15px] text-black/60">
+              {error || "No records found for the selected filters."}
+            </p>
           ) : null}
         </div>
       </section>
@@ -175,7 +243,7 @@ export default function CsvUploadPage() {
         <button
           type="button"
           onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-          disabled={safePage === 1}
+          disabled={safePage === 1 || loading}
           className="h-12 w-12 rounded-full bg-[#005864]/[0.06] text-[#005864] disabled:cursor-not-allowed disabled:opacity-50"
         >
           <ChevronLeft className="mx-auto" size={20} />
@@ -186,7 +254,7 @@ export default function CsvUploadPage() {
         <button
           type="button"
           onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-          disabled={safePage === totalPages}
+          disabled={safePage === totalPages || loading}
           className="h-12 w-12 rounded-full bg-[#005864] text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
           <ChevronRight className="mx-auto" size={20} />
@@ -194,15 +262,13 @@ export default function CsvUploadPage() {
       </div>
 
       <div
-        className={`fixed inset-0 z-40 bg-black/30 transition-opacity duration-300 ${
-          isFilterOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
-        }`}
+        className={`fixed inset-0 z-40 bg-black/30 transition-opacity duration-300 ${isFilterOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
+          }`}
         onClick={() => setIsFilterOpen(false)}
       />
       <aside
-        className={`fixed right-0 top-0 z-50 h-full w-full max-w-[390px] bg-white shadow-2xl transition-transform duration-300 ${
-          isFilterOpen ? "translate-x-0" : "translate-x-full"
-        }`}
+        className={`fixed right-0 top-0 z-50 h-full w-full max-w-[390px] bg-white shadow-2xl transition-transform duration-300 ${isFilterOpen ? "translate-x-0" : "translate-x-full"
+          }`}
       >
         <div className="flex items-center justify-between border-b border-[#EEEEEE] px-5 py-4">
           <h3 className="text-[22px] font-semibold text-[#1C1C1C]">Filters</h3>
@@ -329,20 +395,14 @@ export default function CsvUploadPage() {
                   </p>
                 </div>
               </div>
-            ) : null}
-          </div>
+            ) : <p className="mt-2 text-[13px] text-red-600">{uploadError}</p>}
 
+          </div>
           <div className="px-10 pb-10">
             <button
               type="button"
               disabled={!pendingCsvFile}
-              onClick={() => {
-                if (!pendingCsvFile) return;
-                setUploadedFileName(pendingCsvFile.name);
-                setIsCsvModalOpen(false);
-                setPendingCsvFile(null);
-                setIsUploadSuccessOpen(true);
-              }}
+              onClick={() => handleFileUpload()}
               className="h-12 w-full rounded-[12px] bg-[#005864] text-[16px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
               Upload

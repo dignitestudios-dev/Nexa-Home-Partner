@@ -16,9 +16,15 @@ import { useDispatch } from "react-redux";
 import { AppDispatch } from "@/lib/store";
 
 import { logout } from "@/lib/slices/authSlice";
+import { useSelector } from "react-redux";
+import { RootState } from "@/lib/store";
+import { FaUserEdit } from "react-icons/fa";
 
 export default function Navbar() {
   const router = useRouter();
+  const {user} = useSelector((state: RootState) => state.auth);
+  const profile = user?.data;  
+  console.log(user);
   const dispatch = useDispatch<AppDispatch>();
 
   /* ---------------- LOGOUT ---------------- */
@@ -30,10 +36,11 @@ export default function Navbar() {
     router.push("/auth/login");
   };
 
+
   return (
-    <div className="w-full bg-white rounded-2xl px-6 py-6 flex items-center justify-between shadow-sm">
-      {/* LEFT EMPTY */}
-      <div />
+    <div className="w-full  rounded-2xl px-6 py-6 flex items-center justify-between ">
+    <p className="text-xl font-medium">Welcome,<span className="text-[#004D54] font-semibold">{profile?.name || "User"}</span></p>
+      <div /> 
 
       {/* USER DROPDOWN */}
       <DropdownMenu>
@@ -43,12 +50,12 @@ export default function Navbar() {
             className="flex items-center gap-3 rounded-lg px-2 py-1 hover:bg-gray-50 transition-colors"
           >
             <Avatar className="w-9 h-9">
-              <AvatarImage src="https://i.pravatar.cc/150?img=12" />
+              <AvatarImage src={profile?.profilePicture?.location || ""} />
               <AvatarFallback>RC</AvatarFallback>
             </Avatar>
 
             <span className="text-sm font-medium text-gray-700">
-              Ryan Cooper
+              {profile?.name || "User"}
             </span>
 
             <ChevronDown className="w-4 h-4 text-gray-500" />
@@ -56,6 +63,14 @@ export default function Navbar() {
         </DropdownMenuTrigger>
 
         <DropdownMenuContent align="end" className="w-48">
+
+
+           <DropdownMenuItem asChild>
+            <Link href="/app/edited-profile">
+                <FaUserEdit className="w-4 h-4 mr-2" />
+                Edit Profile
+            </Link>
+          </DropdownMenuItem>
           {/* CHANGE PASSWORD */}
           <DropdownMenuItem asChild>
             <Link href="/app/change-password">

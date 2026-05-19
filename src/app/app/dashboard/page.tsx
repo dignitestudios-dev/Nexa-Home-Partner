@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, MouseEvent, useRef, useState } from "react";
+import { ChangeEvent, MouseEvent, useRef, useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,11 +10,18 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Users,
   Briefcase,
   TrendingUp,
   TrendingUp as TrendingIcon,
   ChevronDown,
+  Loader2,
 } from "lucide-react";
 import {
   Bar,
@@ -28,38 +35,71 @@ import {
   Area,
   AreaChart,
 } from "recharts";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "@/lib/store";
+import { fetchDashboardSummary, fetchRevenueAnalysis, fetchGrowthTracking } from "@/lib/slices/dashboardSlice";
 
-const stats = [
-  { title: "Total Users", value: "56,879", icon: Users },
-  { title: "Total Jobs Posted", value: "56,879", icon: Briefcase },
-  { title: "Total Revenue", value: "56,879", icon: TrendingUp },
-];
 
-const revenueAnalysisData = [
-  { month: "Jan", revenue: 160 },
-  { month: "Feb", revenue: 240 },
-  { month: "Mar", revenue: 190 },
-  { month: "Apr", revenue: 280 },
-  { month: "May", revenue: 360 },
-  { month: "Jun", revenue: 300 },
-  { month: "July", revenue: 420 },
-  { month: "Aug", revenue: 390 },
-  { month: "Sep", revenue: 340 },
-  { month: "Oct", revenue: 470 },
-  { month: "Nov", revenue: 510 },
-  { month: "Dec", revenue: 560 },
-];
-
-const growthTrackingData = [
-  { month: "Jan", referralSignups: 160, jobsViaReferral: 110 },
-  { month: "Feb", referralSignups: 260, jobsViaReferral: 170 },
-  { month: "Mar", referralSignups: 190, jobsViaReferral: 140 },
-  { month: "Apr", referralSignups: 330, jobsViaReferral: 220 },
-  { month: "May", referralSignups: 280, jobsViaReferral: 210 },
-  { month: "Jun", referralSignups: 360, jobsViaReferral: 260 },
-];
 
 export default function DashboardPage() {
+  const dispatch = useDispatch<AppDispatch>();
+  const {
+    stats,
+    loading,
+    error,
+    revenueAnalysis,
+    chartsLoading,
+    chartsError,
+    growthTracking,
+    growthTrackingLoading,
+    growthTrackingError,
+  } = useSelector((state: RootState) => state.dashboard);
+
+  const [revenueGroupBy, setRevenueGroupBy] = useState<"month" | "year">("month");
+  const [growthGroupBy, setGrowthGroupBy] = useState<"month" | "year">("month");
+
+  useEffect(() => {
+    dispatch(fetchDashboardSummary());
+  }, [dispatch]);
+
+  useEffect(() => {
+    dispatch(fetchRevenueAnalysis({ groupBy: revenueGroupBy, months: revenueGroupBy === "month" ? 12 : 5 }));
+  }, [dispatch, revenueGroupBy]);
+
+  useEffect(() => {
+    dispatch(fetchGrowthTracking({ groupBy: growthGroupBy, months: growthGroupBy === "month" ? 12 : 5 }));
+  }, [dispatch, growthGroupBy]);
+
+  const formatPeriod = (period: string, groupBy: "month" | "year") => {
+    if (!period) return "";
+    try {
+      if (groupBy === "month") {
+        const parts = period.split("-");
+        if (parts.length >= 2) {
+          const year = parseInt(parts[0], 10);
+          const month = parseInt(parts[1], 10) - 1;
+          return new Date(year, month, 1).toLocaleString("en-US", { month: "short" });
+        }
+        return period;
+      } else {
+        return period;
+      }
+    } catch (e) {
+      return period;
+    }
+  };
+
+  console.log(revenueAnalysis, "revenueAnalysis");
+  const chartData = revenueAnalysis?.series?.map((item: any) => ({
+    ...item,
+    period: formatPeriod(item.period, revenueGroupBy),
+  }));
+
+  const growthChartData = growthTracking?.series?.map((item: any) => ({
+    month: formatPeriod(item.period, growthGroupBy),
+    referralSignups: item.signups,
+    jobsViaReferral: item.jobsPosted,
+  }));
   const [isAgreementModalOpen, setIsAgreementModalOpen] = useState(true);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
@@ -185,6 +225,24 @@ export default function DashboardPage() {
     setIsSignatureModalOpen(false);
     setIsAgreementModalOpen(false);
   };
+
+  const dashboardStats = [
+    {
+      title: "Total Users",
+      value: stats?.usersAdded?.toLocaleString() || "0",
+      icon: Users,
+    },
+    {
+      title: "Total Jobs Posted",
+      value: stats?.jobsPosted?.toLocaleString() || "",
+      icon: Briefcase,
+    },
+    {
+      title: "Total Revenue",
+      value: "$" + stats?.revenueGenerated?.toLocaleString() || "0",
+      icon: TrendingUp,
+    },
+  ];
 
   return (
     <div className="min-h-screen">
@@ -364,39 +422,50 @@ export default function DashboardPage() {
       </h1>
 
       {/* Top Metrics Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mb-6">
-        {stats.map((item, i) => (
-          <Card
-            key={i}
-            className="border-none shadow-sm rounded-[24px] overflow-hidden bg-white"
-          >
-            <CardContent className="p-0">
-              <div className="p-5 flex items-center gap-4">
-                <div className="bg-[#E6EEEE] p-4 rounded-[14px]">
-                  <item.icon
-                    className="w-7 h-7 text-[#004D4D]"
-                    strokeWidth={2.5}
-                  />
+      {loading ? (
+        <div className="flex items-center justify-center py-10">
+          <Loader2 className="w-8 h-8 animate-spin text-[#005864]" />
+        </div>
+      ) : error ? (
+        <div className="text-red-500 text-center py-10 bg-red-50 rounded-2xl mb-6">
+          {error}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mb-6">
+          {dashboardStats.map((item, i) => (
+            <Card
+              key={i}
+              className="border-none shadow-sm rounded-[24px] overflow-hidden bg-white"
+            >
+              <CardContent className="p-0">
+                <div className="p-5 flex items-center gap-4">
+                  <div className="bg-[#E6EEEE] p-4 rounded-[14px]">
+                    <item.icon
+                      className="w-7 h-7 text-[#004D4D]"
+                      strokeWidth={2.5}
+                    />
+                  </div>
+                  <div>
+                    <p className="text-[13px] font-medium text-gray-500 mb-1">
+                      {item.title}
+                    </p>
+                    <h2 className="text-[24px] leading-none font-[600] text-[#1A1A1A] tracking-tight">
+                      {item.value}
+                    </h2>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-[13px] font-medium text-gray-500 mb-1">
-                    {item.title}
-                  </p>
-                  <h2 className="text-[24px] leading-none font-[600] text-[#1A1A1A] tracking-tight">
-                    {item.value}
-                  </h2>
+                <div className="bg-[#005864] py-3 px-5 flex items-center gap-2 text-white font-medium text-sm">
+                  <TrendingIcon className="w-4 h-4" />
+                  {stats?.revenueIncreaseThisMonth || 0} increase this month
                 </div>
-              </div>
-              <div className="bg-[#005864] py-3 px-5 flex items-center gap-2 text-white font-medium text-sm">
-                <TrendingIcon className="w-4 h-4" />
-                12 increase this month
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
       <h1 className="text-[24px] leading-[45px] font-[500] text-[#1A1A1A]">
-      Referral Performance
+        Referral Performance
       </h1>
 
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-6 mt-2">
@@ -406,66 +475,123 @@ export default function DashboardPage() {
             <h2 className="text-[18px] font-[700] text-[#1A1A1A]">
               Revenue Analysis
             </h2>
-            <div className="bg-[#F4F9F9] px-3 py-1.5 rounded-xl flex items-center gap-2 text-xs font-bold text-gray-500">
-              Monthly <ChevronDown className="w-4 h-4" />
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger className="bg-[#F4F9F9] px-3 py-1.5 rounded-xl flex items-center gap-2 text-xs font-bold text-gray-500 cursor-pointer outline-none select-none hover:bg-[#ebf3f3] transition-colors border-none">
+                {revenueGroupBy === "month" ? "Monthly" : "Yearly"} <ChevronDown className="w-4 h-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-white border border-[#E6EEEE] rounded-xl shadow-lg p-1 min-w-[100px] z-50">
+                <DropdownMenuItem
+                  className="cursor-pointer rounded-lg text-xs font-semibold text-gray-700 hover:bg-[#F4F9F9] hover:text-[#005864] focus:bg-[#F4F9F9] focus:text-[#005864]"
+                  onClick={() => setRevenueGroupBy("month")}
+                >
+                  Monthly
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="cursor-pointer rounded-lg text-xs font-semibold text-gray-700 hover:bg-[#F4F9F9] hover:text-[#005864] focus:bg-[#F4F9F9] focus:text-[#005864]"
+                  onClick={() => setRevenueGroupBy("year")}
+                >
+                  Yearly
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           <div className="h-[320px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={revenueAnalysisData}
-                margin={{ top: 8, right: 8, left: 0, bottom: 8 }}
-              >
-                <defs>
-                  <linearGradient id="dashboardRevenueFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#0FA3A3" stopOpacity={0.35} />
-                    <stop offset="95%" stopColor="#0FA3A3" stopOpacity={0.03} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="5 6" stroke="#E8ECEF" vertical={false} />
-                <XAxis
-                  dataKey="month"
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fill: "#9CA3AF", fontSize: 11, fontWeight: 700 }}
-                />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fill: "#9CA3AF", fontSize: 11, fontWeight: 700 }}
-                  tickFormatter={(value) => `$${value}`}
-                />
-                <Tooltip
-                  formatter={(value) => [`$${value ?? 0}`, "Revenue"]}
-                  contentStyle={{
-                    borderRadius: 12,
-                    border: "1px solid #E8ECEF",
-                    backgroundColor: "#FFFFFF",
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="revenue"
-                  stroke="#0FA3A3"
-                  strokeWidth={3}
-                  fill="url(#dashboardRevenueFill)"
-                  dot={{ r: 2.5, fill: "#0FA3A3" }}
-                  activeDot={{ r: 6 }}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            {chartsLoading ? (
+              <div className="flex h-full items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-[#005864]" />
+              </div>
+            ) : chartsError ? (
+              <div className="flex h-full items-center justify-center text-red-500">
+                {chartsError}
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart
+                  data={chartData ?? []}
+                  margin={{ top: 8, right: 8, left: 0, bottom: 8 }}
+                >
+                  <defs>
+                    <linearGradient
+                      id="dashboardRevenueFill"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop offset="5%" stopColor="#0FA3A3" stopOpacity={0.35} />
+                      <stop offset="95%" stopColor="#0FA3A3" stopOpacity={0.03} />
+                    </linearGradient>
+                  </defs>
+
+                  <CartesianGrid
+                    strokeDasharray="5 6"
+                    stroke="#E8ECEF"
+                    vertical={false}
+                  />
+
+                  <XAxis
+                    dataKey="period"
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fill: "#9CA3AF", fontSize: 11, fontWeight: 700 }}
+                  />
+
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fill: "#9CA3AF", fontSize: 11, fontWeight: 700 }}
+                    tickFormatter={(value) => `$${value}`}
+                  />
+
+                  <Tooltip
+                    formatter={(value) => [`$${value}`, "Revenue"]}
+                    contentStyle={{
+                      borderRadius: 12,
+                      border: "1px solid #E8ECEF",
+                      backgroundColor: "#FFFFFF",
+                    }}
+                  />
+
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#0FA3A3"
+                    strokeWidth={3}
+                    fill="url(#dashboardRevenueFill)"
+                    dot={{ r: 5 }}
+                    activeDot={{ r: 8 }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </Card>
 
         {/* Growth Tracking */}
         <Card className="xl:col-span-2 rounded-[28px] border-none shadow-sm bg-white p-6 min-h-[430px] flex flex-col">
           <div className="flex justify-between items-center mb-5">
-          <h2 className="text-[18px] font-[700] text-[#1A1A1A]">
+            <h2 className="text-[18px] font-[700] text-[#1A1A1A]">
               Growth Tracking
             </h2>
-            <div className="bg-[#F4F9F9] px-3 py-1.5 rounded-xl flex items-center gap-2 text-xs font-bold text-gray-500">
-              Monthly <ChevronDown className="w-4 h-4" />
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger className="bg-[#F4F9F9] px-3 py-1.5 rounded-xl flex items-center gap-2 text-xs font-bold text-gray-500 cursor-pointer outline-none select-none hover:bg-[#ebf3f3] transition-colors border-none">
+                {growthGroupBy === "month" ? "Monthly" : "Yearly"} <ChevronDown className="w-4 h-4" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-white border border-[#E6EEEE] rounded-xl shadow-lg p-1 min-w-[100px] z-50">
+                <DropdownMenuItem
+                  className="cursor-pointer rounded-lg text-xs font-semibold text-gray-700 hover:bg-[#F4F9F9] hover:text-[#005864] focus:bg-[#F4F9F9] focus:text-[#005864]"
+                  onClick={() => setGrowthGroupBy("month")}
+                >
+                  Monthly
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="cursor-pointer rounded-lg text-xs font-semibold text-gray-700 hover:bg-[#F4F9F9] hover:text-[#005864] focus:bg-[#F4F9F9] focus:text-[#005864]"
+                  onClick={() => setGrowthGroupBy("year")}
+                >
+                  Yearly
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           <div className="flex gap-4 mb-6">
             <div className="flex items-center gap-2 text-xs font-[400] text-gray-500">
@@ -476,46 +602,56 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={growthTrackingData}
-                margin={{ top: 8, right: 4, left: 0, bottom: 6 }}
-                barGap={6}
-              >
-                <CartesianGrid strokeDasharray="4 5" stroke="#ECEFF1" vertical={false} />
-                <XAxis
-                  dataKey="month"
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fill: "#9CA3AF", fontSize: 11, fontWeight: 700 }}
-                />
-                <YAxis
-                  tickLine={false}
-                  axisLine={false}
-                  tick={{ fill: "#9CA3AF", fontSize: 11, fontWeight: 700 }}
-                />
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: 12,
-                    border: "1px solid #E8ECEF",
-                    backgroundColor: "#FFFFFF",
-                  }}
-                />
-                <Legend wrapperStyle={{ display: "none" }} />
-                <Bar
-                  dataKey="referralSignups"
-                  fill="#005864"
-                  radius={[12, 12, 12, 12]}
-                  maxBarSize={16}
-                />
-                <Bar
-                  dataKey="jobsViaReferral"
-                  fill="#C8E015"
-                  radius={[12, 12, 12, 12]}
-                  maxBarSize={16}
-                />
-              </BarChart>
-            </ResponsiveContainer>
+            {growthTrackingLoading ? (
+              <div className="flex h-full items-center justify-center">
+                <Loader2 className="w-8 h-8 animate-spin text-[#005864]" />
+              </div>
+            ) : growthTrackingError ? (
+              <div className="flex h-full items-center justify-center text-red-500">
+                {growthTrackingError}
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={growthChartData}
+                  margin={{ top: 8, right: 4, left: 0, bottom: 6 }}
+                  barGap={6}
+                >
+                  <CartesianGrid strokeDasharray="4 5" stroke="#ECEFF1" vertical={false} />
+                  <XAxis
+                    dataKey="month"
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fill: "#9CA3AF", fontSize: 11, fontWeight: 700 }}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    tick={{ fill: "#9CA3AF", fontSize: 11, fontWeight: 700 }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      borderRadius: 12,
+                      border: "1px solid #E8ECEF",
+                      backgroundColor: "#FFFFFF",
+                    }}
+                  />
+                  <Legend wrapperStyle={{ display: "none" }} />
+                  <Bar
+                    dataKey="referralSignups"
+                    fill="#005864"
+                    radius={[12, 12, 12, 12]}
+                    maxBarSize={16}
+                  />
+                  <Bar
+                    dataKey="jobsViaReferral"
+                    fill="#C8E015"
+                    radius={[12, 12, 12, 12]}
+                    maxBarSize={16}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </Card>
       </div>

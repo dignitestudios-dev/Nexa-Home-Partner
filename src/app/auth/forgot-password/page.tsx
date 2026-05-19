@@ -69,7 +69,7 @@ export default function ForgotPasswordForm() {
       {/* Email */}
       <div className="mt-[68px] w-[388px] mx-auto">
         <Input
-          type="email"
+          type="text"
           placeholder="lucasbenjamin@gmail.com"
           className="h-[48px] bg-[#F8F8F8] rounded-[12px] border-0 px-4 text-[16px] placeholder:text-[#181818]/50 focus-visible:ring-0 focus-visible:border-transparent shadow-none"
           {...register("email")}
@@ -77,11 +77,13 @@ export default function ForgotPasswordForm() {
 
         <div className="min-h-[20px] mt-2">
           {errors.email && (
-            <div className="text-red-600 text-sm">{errors.email.message}</div>
+            <div>
+              {errors.email && (
+                <div className="text-red-600 text-sm">{errors.email.message}</div>
+              )}
+            </div>
           )}
-          {error && (
-            <div className="text-red-600 text-sm">{error}</div>
-          )}
+         
         </div>
       </div>
 

@@ -1,43 +1,58 @@
 "use client";
 
 import { useState } from "react";
-import { Eye, EyeOff, KeyRound } from "lucide-react";
+import { Eye, EyeOff, KeyRound, Loader2 } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "@/lib/store";
+import { changePassword, clearError } from "@/lib/slices/authSlice";
+import { toast } from "sonner";
+import { passwordSchema } from "@/lib/schemas/auth.schema";
+
+const changePasswordFormSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: passwordSchema,
+  confirmPassword: z.string().min(1, "Please confirm your new password"),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
+});
+
+type ChangePasswordFormData = z.infer<typeof changePasswordFormSchema>;
 
 export default function AppChangePasswordPage() {
+  const dispatch = useDispatch<AppDispatch>();
+  const { loading } = useSelector((state: RootState) => state.auth);
+
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setMessage("");
-    setError("");
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<ChangePasswordFormData>({
+    resolver: zodResolver(changePasswordFormSchema),
+  });
 
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      setError("All fields are required.");
-      return;
+  const onSubmit = async (data: ChangePasswordFormData) => {
+    dispatch(clearError());
+    
+    const result = await dispatch(changePassword({
+      password: data.currentPassword,
+      newPassword: data.newPassword
+    }));
+
+    if (changePassword.fulfilled.match(result)) {
+      toast.success(result.payload.message || "Password updated successfully");
+      reset(); // Clear form on success
+    } else {
+      toast.error(result.payload as string || "Failed to update password");
     }
-
-    if (newPassword.length < 8) {
-      setError("New password must be at least 8 characters long.");
-      return;
-    }
-
-    if (newPassword !== confirmPassword) {
-      setError("New password and confirm password must match.");
-      return;
-    }
-
-    // TODO: Connect with backend update password API.
-    setMessage("Password updated successfully.");
-    setCurrentPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
   };
 
   return (
@@ -55,7 +70,8 @@ export default function AppChangePasswordPage() {
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+          {/* Current Password */}
           <div>
             <label className="mb-2 block text-[14px] font-medium text-[#1C1C1C]">
               Current Password
@@ -63,8 +79,7 @@ export default function AppChangePasswordPage() {
             <div className="relative">
               <input
                 type={showCurrentPassword ? "text" : "password"}
-                value={currentPassword}
-                onChange={(event) => setCurrentPassword(event.target.value)}
+                {...register("currentPassword")}
                 placeholder="Enter current password"
                 className="h-12 w-full rounded-[12px] bg-[#F8F8F8] px-4 pr-12 text-[15px] text-[#181818] placeholder:text-[#181818]/50 focus:outline-none"
               />
@@ -76,8 +91,12 @@ export default function AppChangePasswordPage() {
                 {showCurrentPassword ? <Eye size={18} /> : <EyeOff size={18} />}
               </button>
             </div>
+            {errors.currentPassword && (
+              <p className="mt-1 text-xs text-red-600">{errors.currentPassword.message}</p>
+            )}
           </div>
 
+          {/* New Password */}
           <div>
             <label className="mb-2 block text-[14px] font-medium text-[#1C1C1C]">
               New Password
@@ -85,8 +104,7 @@ export default function AppChangePasswordPage() {
             <div className="relative">
               <input
                 type={showNewPassword ? "text" : "password"}
-                value={newPassword}
-                onChange={(event) => setNewPassword(event.target.value)}
+                {...register("newPassword")}
                 placeholder="Enter new password"
                 className="h-12 w-full rounded-[12px] bg-[#F8F8F8] px-4 pr-12 text-[15px] text-[#181818] placeholder:text-[#181818]/50 focus:outline-none"
               />
@@ -98,8 +116,12 @@ export default function AppChangePasswordPage() {
                 {showNewPassword ? <Eye size={18} /> : <EyeOff size={18} />}
               </button>
             </div>
+            {errors.newPassword && (
+              <p className="mt-1 text-xs text-red-600">{errors.newPassword.message}</p>
+            )}
           </div>
 
+          {/* Confirm Password */}
           <div>
             <label className="mb-2 block text-[14px] font-medium text-[#1C1C1C]">
               Confirm New Password
@@ -107,8 +129,7 @@ export default function AppChangePasswordPage() {
             <div className="relative">
               <input
                 type={showConfirmPassword ? "text" : "password"}
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
+                {...register("confirmPassword")}
                 placeholder="Confirm new password"
                 className="h-12 w-full rounded-[12px] bg-[#F8F8F8] px-4 pr-12 text-[15px] text-[#181818] placeholder:text-[#181818]/50 focus:outline-none"
               />
@@ -120,20 +141,20 @@ export default function AppChangePasswordPage() {
                 {showConfirmPassword ? <Eye size={18} /> : <EyeOff size={18} />}
               </button>
             </div>
+            {errors.confirmPassword && (
+              <p className="mt-1 text-xs text-red-600">{errors.confirmPassword.message}</p>
+            )}
           </div>
-
-          {error ? <p className="text-sm text-red-600">{error}</p> : null}
-          {message ? <p className="text-sm text-[#005864]">{message}</p> : null}
 
           <button
             type="submit"
-            className="mt-2 h-12 w-full rounded-[12px] bg-[#005864] text-[15px] font-semibold text-white hover:opacity-95"
+            disabled={loading}
+            className="mt-2 flex h-12 w-full items-center justify-center rounded-[12px] bg-[#005864] text-[15px] font-semibold text-white hover:opacity-95 disabled:opacity-50"
           >
-            Update Password
+            {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Update Password"}
           </button>
         </form>
       </div>
     </div>
   );
 }
-

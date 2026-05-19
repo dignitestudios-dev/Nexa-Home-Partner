@@ -2,7 +2,7 @@ import axios from "axios";
 import Cookies from "js-cookie";
 
 
-export const baseURL = "https://api.dev.nexahomeapp.com"; // Replace with your actual base URL
+export const baseURL = "https://api.staging.nexahomeapp.com"; // Replace with your actual base URL
 
 const headers = {
   "Content-Type": "application/json",
@@ -16,7 +16,7 @@ export const API = axios.create({
   baseURL: baseURL,
   timeout: 10000, // Set a timeout (optional)
   headers: headers,
-  
+
 });
 
 // Request Interceptor
@@ -36,7 +36,7 @@ API.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error?.response?.status === 401) {
-      Cookies.remove("authToken"); 
+      Cookies.remove("authToken");
       // window.location.href = "/auth/login"; 
     }
     console.log(error);

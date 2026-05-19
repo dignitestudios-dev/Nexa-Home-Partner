@@ -8,10 +8,15 @@ import {
   checkEmail as checkEmailAPI,
   verifyEmail as verifyEmailAPI,
   completeProfile as completeProfileAPI,
+  updateProfile as updateProfileAPI,
   getMeAPI,
   resendOtpAPI,
+  changePassword as changePasswordAPI,
 } from "../api/auth.api"; // tumhara API file
 import Cookies from "js-cookie";
+import { socialLogin } from "../firebase/firebaseAuth";
+import { toast } from "sonner";
+import { removeLocalStorage } from "@/utils/localStorage";
 
 // ------------------ Types ------------------
 export interface User {
@@ -22,6 +27,15 @@ export interface User {
   isProfileComplete: boolean;
   profilePicture?: string;
   phone?: string;
+  overview?: string;
+  data?: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    profilePicture?: {
+      location?: string;
+    };
+  };
 }
 
 interface AuthState {
@@ -33,6 +47,7 @@ interface AuthState {
   email: string | null;
   isEmailVerified: boolean | null;
   tempPassword?: string;
+  emailExistsStatus?: EmailExistsStatus | null;
 }
 
 // ------------------ Helper Functions ------------------
@@ -71,17 +86,24 @@ const initialState: AuthState = {
   error: null,
   email: null,
   isEmailVerified: null,
+  emailExistsStatus: null,
 };
 
 // ------------------ Async Thunks ------------------
 
 // Check Email
+export type EmailExistsStatus = "yes" | "no" | "yes-conflict";
+
 export const checkEmail = createAsyncThunk<
-  { exists: boolean; email: string },
+  {
+    exists: EmailExistsStatus;
+    email?: string;
+  },
   string
 >("auth/checkEmail", async (email, thunkAPI) => {
   try {
     const data = await checkEmailAPI(email);
+
     return data.data;
   } catch (err: any) {
     return thunkAPI.rejectWithValue(
@@ -89,7 +111,6 @@ export const checkEmail = createAsyncThunk<
     );
   }
 });
-
 export const getMe = createAsyncThunk("auth/getMe", async (_, thunkAPI) => {
   try {
     const data = await getMeAPI();
@@ -115,6 +136,19 @@ export const loginUser = createAsyncThunk<
   }
 });
 
+// authSlice mein check karo yeh hai ya nahi
+export const socialAuth = createAsyncThunk(
+  "auth/socialAuth",
+  async ({ type }: { type: "google" | "apple" }, { rejectWithValue }) => {
+    try {
+      const data = await socialLogin(type);
+      return data;
+    } catch (error: any) {
+      return rejectWithValue(error?.message || "Social login failed"); // ✅ yeh zaroori hai
+    }
+  },
+);
+
 export const resendOtp = createAsyncThunk<any, string>(
   "auth/resendOtp",
   async (email, thunkAPI) => {
@@ -126,7 +160,7 @@ export const resendOtp = createAsyncThunk<any, string>(
         err.response?.data?.message || "Failed to resend OTP",
       );
     }
-  }
+  },
 );
 
 // Verify Email
@@ -138,6 +172,7 @@ export const verifyEmail = createAsyncThunk<
     const data = await verifyEmailAPI(payload);
     return data;
   } catch (err: any) {
+    console.log(err, "form verify ");
     return thunkAPI.rejectWithValue(
       err.response?.data?.message || "Failed to verify email",
     );
@@ -154,6 +189,21 @@ export const completeProfile = createAsyncThunk<any, FormData>(
     } catch (err: any) {
       return thunkAPI.rejectWithValue(
         err.response?.data?.message || "Failed to complete profile",
+      );
+    }
+  },
+);
+
+// Update Profile
+export const updateProfile = createAsyncThunk<any, FormData>(
+  "auth/updateProfile",
+  async (formData, thunkAPI) => {
+    try {
+      const data = await updateProfileAPI(formData);
+      return data;
+    } catch (err: any) {
+      return thunkAPI.rejectWithValue(
+        err.response?.data?.message || "Failed to update profile",
       );
     }
   },
@@ -200,6 +250,21 @@ export const updatePassword = createAsyncThunk<void, { password: string }>(
   },
 );
 
+// Change Password
+export const changePassword = createAsyncThunk<
+  any,
+  { password: string; newPassword: string }
+>("auth/changePassword", async (data, thunkAPI) => {
+  try {
+    const res = await changePasswordAPI(data);
+    return res;
+  } catch (err: any) {
+    return thunkAPI.rejectWithValue(
+      err.response?.data?.message || "Failed to change password",
+    );
+  }
+});
+
 // Token validation thunk
 export const checkAuthStatus = createAsyncThunk(
   "auth/checkStatus",
@@ -226,6 +291,7 @@ const authSlice = createSlice({
       state.tempPassword = undefined;
       Cookies.remove("authToken");
       Cookies.remove("resetToken");
+      removeLocalStorage("user");
     },
     setEmail: (state, action: PayloadAction<string>) => {
       state.email = action.payload;
@@ -248,7 +314,6 @@ const authSlice = createSlice({
     });
     builder.addCase(loginUser.fulfilled, (state, action) => {
       state.loading = false;
-      
     });
 
     builder.addCase(getMe.fulfilled, (state, action) => {
@@ -301,6 +366,23 @@ const authSlice = createSlice({
       state.error = action.payload as string;
     });
 
+    // Update Profile
+    builder.addCase(updateProfile.pending, (state) => {
+      state.loading = true;
+      state.error = null;
+      state.success = false;
+    });
+    builder.addCase(updateProfile.fulfilled, (state, action) => {
+      state.loading = false;
+      state.success = true;
+      state.user = action.payload.data?.user || action.payload.data;
+    });
+    builder.addCase(updateProfile.rejected, (state, action) => {
+      state.loading = false;
+      state.success = false;
+      state.error = action.payload as string;
+    });
+
     // Check Email
     builder.addCase(checkEmail.pending, (state) => {
       state.loading = true;
@@ -308,6 +390,8 @@ const authSlice = createSlice({
     });
     builder.addCase(checkEmail.fulfilled, (state, action) => {
       state.loading = false;
+
+      state.emailExistsStatus = action.payload.exists;
     });
     builder.addCase(checkEmail.rejected, (state, action) => {
       state.loading = false;
@@ -342,6 +426,22 @@ const authSlice = createSlice({
       state.error = action.payload as string;
     });
 
+    // Change Password
+    builder.addCase(changePassword.pending, (state) => {
+      state.loading = true;
+      state.error = null;
+      state.success = false;
+    });
+    builder.addCase(changePassword.fulfilled, (state) => {
+      state.loading = false;
+      state.success = true;
+    });
+    builder.addCase(changePassword.rejected, (state, action) => {
+      state.loading = false;
+      state.error = action.payload as string;
+      state.success = false;
+    });
+
     // Check auth status
     builder.addCase(checkAuthStatus.pending, (state) => {
       state.loading = true;
@@ -358,6 +458,23 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       state.error = action.payload as string;
       Cookies.remove("authToken");
+    });
+    builder.addCase(socialAuth.pending, (state) => {
+      state.loading = true;
+      state.error = null;
+    });
+
+    builder.addCase(socialAuth.fulfilled, (state, action) => {
+      state.loading = false;
+
+      state.user = action.payload?.data?.user;
+      state.isAuthenticated = true;
+    });
+
+    builder.addCase(socialAuth.rejected, (state, action) => {
+      state.loading = false;
+      state.error = action.payload as string;
+      state.isAuthenticated = false;
     });
   },
 });

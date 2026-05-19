@@ -24,7 +24,20 @@ export default function RootLayout({
         <StoreProvider>
           <AuthProvider>
             {children}
-            <Toaster position="top-center" richColors />
+         <Toaster
+  position="bottom-right"
+  richColors
+  toastOptions={{
+    classNames: {
+      toast:
+        "!bg-[#005F6B] !text-white !border-0 !rounded-2xl !shadow-lg !px-5 !py-4",
+      error: "!bg-[#005F6B]",
+      title: "!text-white !text-[18px] !font-semibold",
+      description: "!text-white/90",
+      closeButton: "!text-white",
+    },
+  }}
+/>
           </AuthProvider>
         </StoreProvider>
       </body>

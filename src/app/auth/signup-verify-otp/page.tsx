@@ -13,6 +13,9 @@ import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/lib/store";
 import { verifyEmail, clearError, resendOtp } from "@/lib/slices/authSlice";
 import { toast } from "sonner";
+import { removeLocalStorage } from "@/utils/localStorage";
+import { getLocalStorage } from "@/utils/localStorage";
+
 
 type OtpFormData = z.infer<typeof otpSchema>;
 
@@ -22,11 +25,13 @@ function SignupVerificationContent() {
   const searchParams = useSearchParams();
   const { loading, error } = useSelector((state: RootState) => state.auth);
 
-  const [timer, setTimer] = useState(30);
+  const [timer, setTimer] = useState(1);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
-  const email = searchParams.get("email" as string) ||  localStorage.getItem("tempEmail" as string);
+  const email = getLocalStorage("tempEmail") || "";
+  console.log(email, "email");
 
+  console.log("Type:", typeof email);
   const {
     setValue,
     handleSubmit,
@@ -109,6 +114,7 @@ const handleSubmitOtp = async (data: OtpFormData) => {
 
   if (verifyEmail.fulfilled.match(result)) {
     const user = result.payload.data.user;
+    removeLocalStorage("tempEmail");
   console.log(user,"sadsadsdsadsad");
   if(user.isProfileCompleted === false){
     router.push("/auth/register");
@@ -141,19 +147,31 @@ const handleSubmitOtp = async (data: OtpFormData) => {
 
     return () => clearTimeout(redirectTimer);
   }, [isSuccessModalOpen, router]);
+
+
+
 const handleResendOtp = async () => {
   if (!email) {
     toast.error("Email not found");
     return;
   }
 
+  console.log("Resending OTP for email:", email);
+
   const result = await dispatch(resendOtp(email));
+  // dispatch(resendOtp(JSON.stringify(email)));
+
 
   if (resendOtp.fulfilled.match(result)) {
     toast.success(result.payload?.message || "OTP resent successfully");
-
-    // reset timer
     setTimer(30);
+    
+    // ✅ OTP field reset
+    setValue("otp", "");
+    inputRefs.current[0]?.focus(); // ✅ pehle input pe focus
+    
+    // ✅ Error clear
+    dispatch(clearError());
   } else {
     toast.error((result.payload as string) || "Failed to resend OTP");
   }
@@ -207,9 +225,7 @@ const handleResendOtp = async () => {
           {errors.otp && (
             <div className="text-red-600 text-sm">{errors.otp.message}</div>
           )}
-          {error && (
-            <div className="text-red-600 text-sm">{error}</div>
-          )}
+      
         </div>
 
         <p className="text-[16px] leading-[22px] text-black/80 mt-4 text-center">

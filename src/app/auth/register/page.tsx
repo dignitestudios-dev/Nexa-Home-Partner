@@ -14,14 +14,22 @@ import { toast } from "sonner";
 
 import { Input } from "@/components/ui/input";
 import { completeProfileSchema } from "@/lib/schemas/auth.schema";
+import { getLocalStorage } from "@/utils/localStorage";
+
 
 type CompleteProfileFormData = z.infer<typeof completeProfileSchema>;
 
 export default function RegisterPage() {
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
-  const { user, email: reduxEmail, loading, error, success } = useSelector((state: RootState) => state.auth);
-  
+  const {
+    user,
+    email: reduxEmail,
+    loading,
+    error,
+    success,
+  } = useSelector((state: RootState) => state.auth);
+
   const [logoPreviewUrl, setLogoPreviewUrl] = useState<string>("");
 
   const {
@@ -29,16 +37,16 @@ export default function RegisterPage() {
     handleSubmit,
     setValue,
     reset,
+    watch,
     formState: { errors },
   } = useForm<CompleteProfileFormData>({
     resolver: zodResolver(completeProfileSchema),
     defaultValues: {
-      fullName: user?.fullName || "",
-      phoneNumber: user?.phone || "",
+      name: "",
+      phoneNumber: "",
     },
   });
-
-
+const nameValue = watch("name") || "";
   /* ---------------- LOGOUT ---------------- */
   const handleLogout = () => {
     // remove redux data + token
@@ -48,45 +56,103 @@ export default function RegisterPage() {
     router.push("/auth/login");
   };
   // Sync form with user state when it changes
-  useEffect(() => {
-    if (user) {
-      reset({
-        fullName: user.fullName || "",
-        phoneNumber: user.phone || "",
-      });
-    }
-  }, [user, reset]);
+  // useEffect(() => {
+  //   if (user) {
+  //     reset({
+  //       name:  "",
+  //       phoneNumber: user.phone || "",
+  //     });
+  //   }
+  // }, [user, reset]);
 
   // Handle Image Selection and Preview
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // Clear previous preview
-      if (logoPreviewUrl) {
-        URL.revokeObjectURL(logoPreviewUrl);
-      }
-      
-      // Update form value
-      setValue("profilePicture", file, { shouldValidate: true });
-      
-      // Create new preview
-      setLogoPreviewUrl(URL.createObjectURL(file));
+  // const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   const file = e.target.files?.[0];
+  //   if (file) {
+  //     // Clear previous preview
+  //     if (logoPreviewUrl) {
+  //       URL.revokeObjectURL(logoPreviewUrl);
+  //     }
+
+  //     // Update form value
+  //     setValue("profilePicture", file, { shouldValidate: true });
+
+  //     // Create new preview
+  //     setLogoPreviewUrl(URL.createObjectURL(file));
+  //   }
+  // };
+const handleImageChange = async (
+  e: React.ChangeEvent<HTMLInputElement>
+) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+
+  // ❌ Only image check
+  if (!file.type.startsWith("image/")) {
+    toast.error("Only image files are allowed");
+    return;
+  }
+
+  // ❌ Block GIF explicitly (if needed)
+  if (file.type === "image/gif") {
+    toast.error("GIF images are not allowed");
+    return;
+  }
+
+  const minSize = 10 * 1024;
+  const maxSize = 25 * 1024 * 1024;
+
+  if (file.size < minSize) {
+    toast.error("Image is too small (min 10KB)");
+    return;
+  }
+
+  if (file.size > maxSize) {
+    toast.error("Image is too large (max 25MB)");
+    return;
+  }
+
+  const img = new Image();
+  const objectUrl = URL.createObjectURL(file);
+
+  img.onload = () => {
+    const width = img.width;
+    const height = img.height;
+
+    URL.revokeObjectURL(objectUrl);
+
+    if (width < 256 || height < 256) {
+      toast.error("Image resolution must be at least 256x256 px");
+      return;
     }
+
+    setValue("profilePicture", file, { shouldValidate: true });
+    setLogoPreviewUrl(URL.createObjectURL(file));
   };
 
+  img.onerror = () => {
+    toast.error("Invalid image file");
+  };
+
+  img.src = objectUrl;
+};
   const onSubmit = async (data: CompleteProfileFormData) => {
+    console.log("Form data:", data); // CHECK KARO name aa raha hai?
     // Clear previous errors
     dispatch(clearError());
-
     // Prepare FormData for multipart/form-data upload
     const formData = new FormData();
-    formData.append("name", data.fullName);
-    formData.append("phone", `+1${data.phoneNumber}`); // Add country code
-    
+    formData.append("name", data.name);
+    formData.append("phone", `+1${data.phoneNumber}`);
+    console.log(formData, "formData");
+
     // Handle profilePicture (either File or FileList)
     if (data.profilePicture instanceof File) {
       formData.append("profilePicture", data.profilePicture);
-    } else if (data.profilePicture instanceof FileList && data.profilePicture.length > 0) {
+    } else if (
+      data.profilePicture instanceof FileList &&
+      data.profilePicture.length > 0
+    ) {
       formData.append("profilePicture", data.profilePicture[0]);
     }
 
@@ -95,7 +161,7 @@ export default function RegisterPage() {
     if (completeProfile.fulfilled.match(result)) {
       toast.success(result.payload.message || "Profile completed successfully");
     } else {
-      toast.error(result.payload as string || "Failed to complete profile");
+      toast.error((result.payload as string) || "Failed to complete profile");
     }
   };
 
@@ -114,18 +180,20 @@ export default function RegisterPage() {
       }
     };
   }, [logoPreviewUrl]);
-const [displayEmail, setDisplayEmail] = useState<string | null>(null);
+  const [displayEmail, setDisplayEmail] = useState<string | null>(null);
 useEffect(() => {
-  const email = localStorage.getItem("tempEmail");
-
-  if (email) {
-    setDisplayEmail(email);
+  const user = getLocalStorage("user");
+console.log(user,"user")
+  if (user?.email) {
+    setDisplayEmail(user.email);
   }
 }, []);
- 
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="w-full max-w-[388px] py-6">
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="w-full max-w-[388px] py-6"
+    >
       <div className="text-center">
         <h1 className="text-[32px] leading-[40px] tracking-[-0.82px] font-semibold text-[#1C1C1C]">
           Complete Profile
@@ -149,13 +217,15 @@ useEffect(() => {
                 className="w-full h-full object-cover"
               />
             ) : (
-              <span className="text-[44px] mt-[-0.4em] leading-none text-[#005864]">+</span>
+              <span className="text-[44px] mt-[-0.4em] leading-none text-[#005864]">
+                +
+              </span>
             )}
           </label>
           <input
             id="profilePicture"
             type="file"
-            accept="image/*"
+            accept="image/png, image/jpeg, image/jpg, image/webp"
             className="hidden"
             onChange={handleImageChange}
           />
@@ -166,26 +236,43 @@ useEffect(() => {
             Upload Profile Image
           </label>
           {errors.profilePicture && (
-            <p className="text-red-600 text-sm mt-1">{errors.profilePicture.message as string}</p>
+            <p className="text-red-600 text-sm mt-1">
+              {errors.profilePicture.message as string}
+            </p>
           )}
         </div>
 
         <div className="mt-3">
           {/* Full Name */}
           <div className="mb-4">
-            <label className="text-[14px] font-[500] leading-[22px] text-[#1C1C1C]">
-              Full Name
-            </label>
-            <Input
-              type="text"
-              placeholder="Ryan Cooper"
-              className="mt-[6px] h-[48px] rounded-[12px] bg-[#F8F8F8] border-0 px-4 text-[16px] placeholder:text-[#181818]/50 focus-visible:ring-0 focus-visible:border-transparent shadow-none"
-              {...register("fullName")}
-            />
-            {errors.fullName && (
-              <div className="text-red-600 text-sm mt-1.5">{errors.fullName.message}</div>
-            )}
-          </div>
+  <label className="text-[14px] font-[500] leading-[22px] text-[#1C1C1C]">
+    Full Name
+  </label>
+
+  <Input
+    type="text"
+    placeholder="Ryan Cooper"
+    minLength={2}
+    maxLength={64}
+    defaultValue={user?.fullName || ""}
+    className="mt-[6px] h-[48px] rounded-[12px] bg-[#F8F8F8] border-0 px-4 text-[16px] placeholder:text-[#181818]/50 focus-visible:ring-0 focus-visible:border-transparent shadow-none"
+    {...register("name")}
+  />
+
+  <div className="flex items-center justify-end  mt-1">
+   
+
+    <p className="text-[12px] text-[#181818]/50">
+      {nameValue.length}/64
+    </p>
+  </div>
+
+  {errors.name && (
+    <div className="text-red-600 text-sm mt-1.5">
+      {errors.name.message}
+    </div>
+  )}
+</div>
 
           {/* Email (Read-only) */}
           <div className="mb-4">
@@ -219,40 +306,58 @@ useEffect(() => {
               <Input
                 type="text"
                 inputMode="numeric"
-             maxLength={10}
-                placeholder="Add phone number"
+                maxLength={10}
+             
                 className="h-[48px] flex-1 rounded-[12px] bg-[#F8F8F8] border-0 px-4 text-[16px] placeholder:text-[#181818]/50 focus-visible:ring-0 focus-visible:border-transparent shadow-none"
                 {...register("phoneNumber")}
-                onInput={(e) => {
-                  e.currentTarget.value = e.currentTarget.value.replace(/\D/g, "");
+                onChange={(e) => {
+                  const digits = e.target.value.replace(/\D/g, "").slice(0, 10);
+                  e.target.value = digits;
+                  setValue("phoneNumber", digits, { shouldValidate: true });
                 }}
               />
             </div>
             {errors.phoneNumber && (
-              <div className="text-red-600 text-sm mt-1.5">{errors.phoneNumber.message}</div>
+              <div className="text-red-600 text-sm mt-1.5">
+                {errors.phoneNumber.message}
+              </div>
             )}
           </div>
 
-          {/* Terms (if needed, but not in API requirements) */}
-          <div className="mt-0.5 mb-3">
-            <label className="flex items-start gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                required
-                className="mt-0.5 h-5 w-5 rounded-[4px] border border-[#181818]/80 accent-[#005864]"
-              />
-              <span className="text-[15px] leading-[19px] text-black/80">
-                I accept the{" "}
-                <a href="#" className="text-[#005864] font-[500]">
-                  Terms & Conditions
-                </a>{" "}
-                and{" "}
-                <a href="#" className="text-[#005864] font-[500]">
-                  Privacy Policy
-                </a>
-              </span>
-            </label>
-          </div>
+      {/* Terms */}
+<div className="mt-0.5 mb-3">
+  <label className="flex items-start gap-2 cursor-pointer">
+    <input
+      type="checkbox"
+      required
+      className="mt-0.5 h-5 w-5 rounded-[4px] border border-[#181818]/80 accent-[#005864]"
+    />
+
+    <span className="text-[15px] leading-[19px] text-black/80">
+      I accept the{" "}
+      
+      <a
+        href="https://www.nexahomeapp.com/terms-and-conditions"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-[#005864] font-[500]"
+      >
+        Terms & Conditions
+      </a>{" "}
+      
+      and{" "}
+      
+      <a
+        href="https://www.nexahomeapp.com/privacy-policy"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-[#005864] font-[500]"
+      >
+        Privacy Policy
+      </a>
+    </span>
+  </label>
+</div>
 
           {/* Global Error Message */}
           {error && (
@@ -276,8 +381,12 @@ useEffect(() => {
 
           <div className="mt-6 text-center text-[16px] leading-[22px] text-black/80">
             Already have an account?{" "}
-           
-         <button onClick={handleLogout} className="text-[#005864] font-[500] cursor-pointer">Logout</button>
+            <button
+              onClick={handleLogout}
+              className="text-[#005864] font-[500] cursor-pointer"
+            >
+              Logout
+            </button>
           </div>
         </div>
       </div>

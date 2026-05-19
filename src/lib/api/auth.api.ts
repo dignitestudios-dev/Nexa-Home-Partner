@@ -1,5 +1,7 @@
 import { API } from './axios';
 import Cookies from 'js-cookie';
+import { getDeviceHeaders } from './header';
+import { setLocalStorage } from '@/utils/localStorage';
 
 
 
@@ -14,10 +16,12 @@ export const getMeAPI = async () => {
 
 export const checkEmail = async (email: string) => {
   try {
-    const response = await API.post('/auth/check-email', { email }, {
+    const response = await API.post('/auth/check-email', { 
+      email,
+      role: 'partner'
+     }, {
       headers: {
-        'devicemodel': 'IPhone 11 Pro',
-        'deviceuniqueid': 'UUID_IPhone11Prohihiuiuhiuhiuhiuh'
+        ...getDeviceHeaders()
       }
     });
     return response.data;
@@ -35,8 +39,7 @@ export const login = async (credentials: any) => {
     role: 'partner'
   }, {
     headers: {
-      'devicemodel': 'IPhone 11 Pro',
-      'deviceuniqueid': 'UUID_IPhone11Prohihiuiuhiuhiuhiuh'
+      ...getDeviceHeaders()
     }
   });
 
@@ -50,7 +53,6 @@ export const login = async (credentials: any) => {
     Cookies.set('authToken', token, { expires: 7, sameSite: 'strict' });
   }
 
-  console.log(response.data, 'login response');
   
   return response.data;
 };
@@ -58,8 +60,7 @@ export const login = async (credentials: any) => {
   export const resendOtpAPI = async (email: string) => {
     const response = await API.post('/auth/email-verification-otp', { email }, {
       headers: {
-        'devicemodel': 'IPhone 11 Pro',
-        'deviceuniqueid': 'UUID_IPhone11Pro'
+        ...getDeviceHeaders()
       }
     });
     return response.data;
@@ -68,15 +69,14 @@ export const login = async (credentials: any) => {
 export const verifyEmail = async (payload: { email: string; otp: string; role: string }) => {
   const response = await API.post('/auth/verify-email', payload, {
     headers: {
-      'devicemodel': 'IPhone 11 Pro',
-      'deviceuniqueid': 'UUID_IPhone11Pro'
+      ...getDeviceHeaders()
     }
   });
-  
-  const token = response.data?.data?.token ;
 
+  const token = response.data?.data?.token ;
+  const user = response?.data.data.user
+ setLocalStorage("user", user ) 
   const resetToken = response.data?.data?.resetToken;
-  console.log(token, 'token');
   if (token) {
     Cookies.set('authToken', token, { expires: 7, sameSite: 'strict' });
   } else if (resetToken) {
@@ -140,7 +140,7 @@ export const verifyOTP = async (otp: number, email: string) => {
 export const updatePassword = async (password: string) => {
   try {
     const token = Cookies.get("resetToken");
-    console.log(token, 'token');
+   
 
     const response = await API.post("/auth/update-password", {
       password,
@@ -164,6 +164,22 @@ export const completeProfile = async (formData: FormData) => {
       'Content-Type': 'multipart/form-data',
     },
   });
+  return response.data;
+};
+
+// Update Profile API call
+export const updateProfile = async (formData: FormData) => {
+  const response = await API.post('/user/update-profile', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data;
+};
+
+// Change Password API call (for logged in users)
+export const changePassword = async (data: { password: string; newPassword: string }) => {
+  const response = await API.post('/auth/change-password', data);
   return response.data;
 };
 

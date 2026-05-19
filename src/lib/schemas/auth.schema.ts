@@ -1,12 +1,27 @@
 import { z } from "zod";
 
 /* ---------------- EMAIL ---------------- */
+// schemas.ts
 export const emailSchema = z
   .string()
+  .trim()
   .min(1, "Email is required")
-  .email("Invalid email");
-
-/* ---------------- PASSWORD ---------------- */
+  .min(6, "Please enter a valid email address")
+  .max(254, "Please enter a valid email address")
+  .email("Please enter a valid email address")
+  .refine((email) => !/\s/.test(email), {
+    message: "Please enter a valid email address",
+  })
+  .refine(
+    (email) => {
+      const domain = email.split("@")[1];
+      return !!domain && domain.includes(".");
+    },
+    {
+      message: "Enter a valid domain",
+    }
+  )
+  .transform((email) => email.toLowerCase());
 export const passwordSchema = z
   .string()
   .min(8, "Password must be at least 8 characters")
@@ -20,14 +35,40 @@ export const passwordSchema = z
 /* ---------------- PHONE NUMBER ---------------- */
 export const phoneSchema = z
   .string()
-  .min(9, "Invalid phone number")
-  .max(10, "Phone number must be exactly 10 digits")
-  .regex(/^\d+$/, "Only numbers are allowed");
-
+  .trim()
+  .min(1, "Phone number is required")
+  .regex(/^\d{10}$/, "Phone number must be 10 digits");
 /* ---------------- FULL NAME ---------------- */
-export const fullNameSchema = z
+export const nameSchema = z
   .string()
+  .trim()
+  .min(1, "Full name is required")
+  .max(30, "Full name cannot exceed 30 characters")
+  .regex(
+    /^[\p{L}\s'-]+$/u,
+    "Full name can only contain letters, spaces, hyphens (-), and apostrophes (')"
+  );
+/* ---------------- AUTH FLOW (Login Page) ---------------- */
+export const authFlowSchema = z
+  .object({
+    email: emailSchema,
+    password: passwordSchema.optional(),
+    confirmPassword: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.confirmPassword && data.password) {
+        return data.password === data.confirmPassword;
+      }
+      return true;
+    },
+    {
+      message: "Passwords do not match",
+      path: ["confirmPassword"],
+    }
+  );
 
+export type AuthFlowData = z.infer<typeof authFlowSchema>;
 
 /* ---------------- LOGIN ---------------- */
 export const loginSchema = z.object({
@@ -38,16 +79,11 @@ export const loginSchema = z.object({
 /* ---------------- SIGNUP ---------------- */
 export const signupSchema = z
   .object({
-    fullName: fullNameSchema,
-
+    name: nameSchema,
     email: emailSchema,
-
     phoneNumber: phoneSchema,
-
     password: passwordSchema,
-
     confirmPassword: z.string().optional(),
-
     acceptTerms: z
       .boolean()
       .refine((value) => value, "Please accept Terms & Conditions"),
@@ -82,7 +118,6 @@ export const otpSchema = z.object({
 export const resetPasswordSchema = z
   .object({
     password: passwordSchema,
-
     confirmPassword: passwordSchema,
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -92,10 +127,8 @@ export const resetPasswordSchema = z
 
 /* ---------------- COMPLETE PROFILE ---------------- */
 export const completeProfileSchema = z.object({
-  fullName: fullNameSchema,
-
+  name: nameSchema,
   phoneNumber: phoneSchema,
-
   profilePicture: z.any().refine(
     (file) =>
       file instanceof File ||
