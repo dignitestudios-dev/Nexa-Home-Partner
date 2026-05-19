@@ -170,7 +170,7 @@ const onSubmit = async (data: AuthFlowData) => {
         {emailSubmitted && (
           <>
             {/* Password */}
-            <div className="mb-4">
+            <div className="">
               <label className="text-[16px] font-[500] leading-[22px] text-[#1C1C1C]">
                 Password
               </label>
