@@ -91,30 +91,34 @@ export default function CategoryVendorInsightsPage() {
       <section className="mt-4 w-full max-w-[1106px] rounded-[24px] bg-white pb-5">
         {activeTab === "categories" ? (
           <>
-            <div className="grid h-[57px] grid-cols-[80px_1fr_180px] items-center rounded-[39px] bg-[rgba(0,88,100,0.06)] px-8 text-[14px] leading-[18px] font-[500] text-black">
+            <div className="grid h-[57px] grid-cols-[0.8fr_1.2fr_1fr] items-center rounded-[39px] bg-[rgba(0,88,100,0.06)] px-8 text-[14px] leading-[18px] font-[500] text-black">
               <span>Rank</span>
-              <span className="text-center">Category</span>
+              <span>Category</span>
               <span>Total Jobs Posted</span>
             </div>
 
-            <div className="px-8 pt-4">
-              <div className="px-8 pt-4">
+            <div className="px-6 pt-3">
+              <div >
                 {loading ? (
                   <div className="flex h-40 items-center justify-center">
                     <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#005864] border-t-transparent"></div>
+                  </div>
+                ) : category?.categories?.length === 0 ? (
+                  <div className="flex h-40 items-center justify-center">
+                    <span className="text-[16px] leading-[20px] font-[400] text-black">No Categories Found</span>
                   </div>
                 ) : (
                   category?.categories?.map((row, index) => (
                     <div
                       key={row.categoryId}
-                      className={`grid grid-cols-[80px_1fr_180px] items-center py-3 text-[16px] leading-[20px] font-[400] text-black ${index !== category.categories.length - 1
+                      className={`grid grid-cols-[0.8fr_1.2fr_1fr] items-center py-3 text-[16px] leading-[20px] font-[400] text-black ${index !== category.categories.length - 1
                         ? "border-b border-[rgba(238,238,238,0.93)]"
                         : ""
                         }`}
                     >
                       <span>{String(index + 1).padStart(2, "0")}</span>
 
-                      <span className="text-center">{row.categoryName}</span>
+                      <span className="">{row.categoryName}</span>
 
                       <span>{row.jobCount}</span>
                     </div>
@@ -131,18 +135,22 @@ export default function CategoryVendorInsightsPage() {
               <span>Category</span>
               <span>Total Jobs Completed</span>
             </div>
-            <div className="px-6 pt-3">
+            <div className="px-5 pt-3">
               {loading ? (
                 <div className="flex h-40 items-center justify-center">
                   <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#005864] border-t-transparent"></div>
+                </div>
+              ) : homeowner?.users?.length === 0 ? (
+                <div className="flex h-40 items-center justify-center">
+                  <span className="text-[16px] leading-[20px] font-[400] text-black">No Homeowners Found</span>
                 </div>
               ) : (
                 homeowner?.users?.map((row, index) => (
                   <div
                     key={row.userId}
                     className={`grid grid-cols-[100px_1.45fr_1fr_180px] items-center py-3 text-[16px] leading-[20px] font-[400] text-black ${index !== homeowner.users.length - 1
-                        ? "border-b border-[rgba(238,238,238,0.93)]"
-                        : ""
+                      ? "border-b border-[rgba(238,238,238,0.93)]"
+                      : ""
                       }`}
                   >
                     <span>{String(index + 1).padStart(2, "0")}</span>

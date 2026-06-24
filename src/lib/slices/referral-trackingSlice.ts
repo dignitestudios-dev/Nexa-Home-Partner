@@ -3,7 +3,7 @@ import { getReferralCode, getReferralActivity, getRevenueAnalysis } from "../api
 
 interface ReferralActivity {
   id: string;
-  name: string;
+  userName: string;
   registrationDate: string;
   jobsPosted: number;
   revenueGenerated: string;

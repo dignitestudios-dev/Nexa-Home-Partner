@@ -14,3 +14,9 @@ export const getGrowthTracking = async (groupBy: string = "month", months: numbe
   const response = await API.get(`/partner/dashboard/growth-tracking?groupBy=${groupBy}&months=${months}`);
   return response.data;
 };
+
+
+export const uploadSignature = async (formData: FormData) => {
+  const response = await API.post("/user/signature", formData);
+  return response.data;
+};

@@ -32,7 +32,7 @@ const ITEMS_PER_PAGE = 10;
 
 export default function CsvUploadPage() {
   const dispatch = useDispatch<AppDispatch>();
-  const { invitations, total, loading, error, uploadError } = useSelector((state: RootState) => state.csv);
+  const { invitations, total, loading, error, uploadError, uploading } = useSelector((state: RootState) => state.csv);
 
   const [searchValue, setSearchValue] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
@@ -79,29 +79,34 @@ export default function CsvUploadPage() {
     dispatch(uploadCsv(pendingCsvFile))
       .unwrap()
       .then(() => {
+        // 1. RUNS ONLY ON SUCCESS:
         setIsUploadSuccessOpen(true);
         setUploadedFileName(pendingCsvFile.name);
         setPendingCsvFile(null);
         setIsCsvModalOpen(false);
+
+        // fetchInvitations is here (only hit on success!)
+        dispatch(
+          fetchInvitations({
+            page: page,
+            limit: limit,
+            status: "pending",
+            search: searchValue,
+          })
+        );
+        setCurrentPage(page);
       })
       .catch((error: any) => {
-        console.log("CSVdasdsadsa upload failed:", error);
+        // 2. RUNS ONLY ON FAILURE:
+        console.log("CSV upload failed:", error);
         if (error.status === 400) {
           setValidErr(true);
         }
-        toast.error(error,);
+        toast.error(error);
         setPendingCsvFile(null);
-
-
+        // fetchInvitations is NOT called here!
       });
-    dispatch(
-      fetchInvitations({
-        page: page,
-        limit: limit,
-        status: "pending",
-        search: searchValue,
-      })
-    );
+
   };
 
   const handleDownloadTemplate = () => {
@@ -401,11 +406,18 @@ export default function CsvUploadPage() {
           <div className="px-10 pb-10">
             <button
               type="button"
-              disabled={!pendingCsvFile}
+              disabled={!pendingCsvFile || uploading}
               onClick={() => handleFileUpload()}
               className="h-12 w-full rounded-[12px] bg-[#005864] text-[16px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Upload
+              {uploading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Uploading...
+                </span>
+              ) : (
+                "Upload"
+              )}
             </button>
           </div>
         </DialogContent>

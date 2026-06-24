@@ -28,10 +28,12 @@ export interface User {
   profilePicture?: string;
   phone?: string;
   overview?: string;
+  signature?: string;
   data?: {
     name?: string;
     email?: string;
     phone?: string;
+    signature?: string;
     profilePicture?: {
       location?: string;
     };

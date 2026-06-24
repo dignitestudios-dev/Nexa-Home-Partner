@@ -1,14 +1,7 @@
 "use client";
 
-import { ChangeEvent, MouseEvent, useRef, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -41,6 +34,7 @@ import { fetchDashboardSummary, fetchRevenueAnalysis, fetchGrowthTracking } from
 
 
 
+
 export default function DashboardPage() {
   const dispatch = useDispatch<AppDispatch>();
   const {
@@ -69,6 +63,8 @@ export default function DashboardPage() {
   useEffect(() => {
     dispatch(fetchGrowthTracking({ groupBy: growthGroupBy, months: growthGroupBy === "month" ? 12 : 5 }));
   }, [dispatch, growthGroupBy]);
+
+
 
   const formatPeriod = (period: string, groupBy: "month" | "year") => {
     if (!period) return "";
@@ -100,131 +96,7 @@ export default function DashboardPage() {
     referralSignups: item.signups,
     jobsViaReferral: item.jobsPosted,
   }));
-  const [isAgreementModalOpen, setIsAgreementModalOpen] = useState(true);
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [isSignatureModalOpen, setIsSignatureModalOpen] = useState(false);
-  const [uploadedImagePreview, setUploadedImagePreview] = useState<string | null>(
-    null
-  );
-  const [uploadedImageName, setUploadedImageName] = useState("");
-  const [savedSignaturePreview, setSavedSignaturePreview] = useState<string | null>(
-    null
-  );
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const signatureCanvasRef = useRef<HTMLCanvasElement>(null);
-  const isDrawingRef = useRef(false);
-
-  const openUploadModal = () => {
-    setIsAgreementModalOpen(false);
-    setIsUploadModalOpen(true);
-  };
-
-  const openSignatureModal = () => {
-    setIsAgreementModalOpen(false);
-    setIsSignatureModalOpen(true);
-  };
-
-  const handleImageSelection = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) {
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      setUploadedImagePreview(reader.result as string);
-      setUploadedImageName(file.name);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleSaveImage = () => {
-    if (!uploadedImagePreview) {
-      return;
-    }
-    setIsUploadModalOpen(false);
-    setIsAgreementModalOpen(false);
-  };
-
-  const getCanvasPoint = (event: MouseEvent<HTMLCanvasElement>) => {
-    const canvas = signatureCanvasRef.current;
-    if (!canvas) {
-      return { x: 0, y: 0 };
-    }
-    const rect = canvas.getBoundingClientRect();
-    return {
-      x: event.clientX - rect.left,
-      y: event.clientY - rect.top,
-    };
-  };
-
-  const startDrawing = (event: MouseEvent<HTMLCanvasElement>) => {
-    const canvas = signatureCanvasRef.current;
-    if (!canvas) {
-      return;
-    }
-    const context = canvas.getContext("2d");
-    if (!context) {
-      return;
-    }
-
-    const { x, y } = getCanvasPoint(event);
-    isDrawingRef.current = true;
-    context.beginPath();
-    context.moveTo(x, y);
-    context.lineCap = "round";
-    context.lineJoin = "round";
-    context.lineWidth = 2.5;
-    context.strokeStyle = "#1A1A1A";
-  };
-
-  const draw = (event: MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawingRef.current) {
-      return;
-    }
-    const canvas = signatureCanvasRef.current;
-    if (!canvas) {
-      return;
-    }
-    const context = canvas.getContext("2d");
-    if (!context) {
-      return;
-    }
-
-    const { x, y } = getCanvasPoint(event);
-    context.lineTo(x, y);
-    context.stroke();
-  };
-
-  const stopDrawing = () => {
-    isDrawingRef.current = false;
-  };
-
-  const clearSignatureCanvas = () => {
-    const canvas = signatureCanvasRef.current;
-    if (!canvas) {
-      return;
-    }
-    const context = canvas.getContext("2d");
-    if (!context) {
-      return;
-    }
-    context.clearRect(0, 0, canvas.width, canvas.height);
-    setSavedSignaturePreview(null);
-  };
-
-  const handleSaveSignature = () => {
-    const canvas = signatureCanvasRef.current;
-    if (!canvas) {
-      return;
-    }
-
-    const signatureImage = canvas.toDataURL("image/png");
-    setSavedSignaturePreview(signatureImage);
-    setIsSignatureModalOpen(false);
-    setIsAgreementModalOpen(false);
-  };
 
   const dashboardStats = [
     {
@@ -246,176 +118,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen">
-      <Dialog open={isAgreementModalOpen} onOpenChange={setIsAgreementModalOpen}>
-        <DialogContent
-          showCloseButton={false}
-          className="w-full max-w-[900px] rounded-[24px] bg-white p-10"
-        >
-          <DialogTitle className="text-[24px] font-[700] leading-[30px] text-black">
-            Agreement
-          </DialogTitle>
 
-          <DialogDescription className="mt-3 h-[448px] overflow-y-auto pr-2 text-[16px] font-[400] leading-[32px] text-[rgba(24,24,24,0.8)]">
-            Lorem ipsum dolor sit amet consectetur. Diam aliquet lectus laoreet
-            enim faucibus vitae facilisi. Quis amet imperdiet ut molestie luctus
-            risus lacinia. Mauris vel mus at urna vulputate aliquet eu. Quis amet
-            imperdiet ut molestie luctus risus lacinia. Mauris vel mus at urna
-            vulputate aliquet eu. Lorem ipsum dolor sit amet consectetur. Diam
-            aliquet lectus laoreet enim faucibus vitae facilisi. Quis amet
-            imperdiet ut molestie luctus risus lacinia. Mauris vel mus at urna
-            vulputate aliquet eu. Quis amet imperdiet ut molestie luctus risus
-            lacinia. Mauris vel mus at urna vulputate aliquet eu. Lorem ipsum
-            dolor sit amet consectetur. Diam aliquet lectus laoreet enim faucibus
-            vitae facilisi. Quis amet imperdiet ut molestie luctus risus lacinia.
-            Mauris vel mus at urna vulputate aliquet eu. Quis amet imperdiet ut
-            molestie luctus risus lacinia. Mauris vel mus at urna vulputate
-            aliquet eu. Lorem ipsum dolor sit amet consectetur.
-          </DialogDescription>
-
-          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Button
-              type="button"
-              onClick={openUploadModal}
-              className="h-12 rounded-2xl bg-[rgba(0,88,100,0.06)] text-[16px] font-[700] text-[#005864] capitalize hover:bg-[rgba(0,88,100,0.12)]"
-            >
-              Upload Image
-            </Button>
-            <Button
-              type="button"
-              onClick={openSignatureModal}
-              className="h-12 rounded-2xl bg-[#005864] text-[16px] font-[700] text-white capitalize hover:bg-[#004852]"
-            >
-              Draw Signature
-            </Button>
-          </div>
-
-          {(uploadedImagePreview || savedSignaturePreview) && (
-            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {uploadedImagePreview ? (
-                <div className="rounded-2xl border border-[#E6EEEE] p-3">
-                  <p className="mb-2 text-xs font-[600] text-[#005864]">
-                    Uploaded Image: {uploadedImageName}
-                  </p>
-                  <img
-                    src={uploadedImagePreview}
-                    alt="Uploaded preview"
-                    className="h-28 w-full rounded-xl object-cover"
-                  />
-                </div>
-              ) : null}
-              {savedSignaturePreview ? (
-                <div className="rounded-2xl border border-[#E6EEEE] p-3">
-                  <p className="mb-2 text-xs font-[600] text-[#005864]">
-                    Saved Signature
-                  </p>
-                  <img
-                    src={savedSignaturePreview}
-                    alt="Saved signature preview"
-                    className="h-28 w-full rounded-xl object-contain"
-                  />
-                </div>
-              ) : null}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isUploadModalOpen} onOpenChange={setIsUploadModalOpen}>
-        <DialogContent
-          className="w-full max-w-[620px] rounded-[24px] bg-white p-8"
-        >
-          <DialogTitle className="text-[22px] font-[700] text-[#1A1A1A]">
-            Upload Image
-          </DialogTitle>
-          <DialogDescription className="text-[15px] leading-7 text-[rgba(24,24,24,0.8)]">
-            Select an image file, preview it, then click save.
-          </DialogDescription>
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleImageSelection}
-          />
-
-          <div className="mt-4 space-y-4">
-            <Button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="h-12 w-full rounded-2xl bg-[rgba(0,88,100,0.06)] text-[16px] font-[700] text-[#005864] hover:bg-[rgba(0,88,100,0.12)]"
-            >
-              Choose Image
-            </Button>
-
-            <div className="h-[250px] rounded-2xl border border-dashed border-[#CFE0E0] bg-[#F9FCFC] p-3">
-              {uploadedImagePreview ? (
-                <img
-                  src={uploadedImagePreview}
-                  alt="Selected upload preview"
-                  className="h-full w-full rounded-xl object-contain"
-                />
-              ) : (
-                <div className="flex h-full items-center justify-center text-sm text-gray-500">
-                  No image selected yet
-                </div>
-              )}
-            </div>
-
-            <Button
-              type="button"
-              onClick={handleSaveImage}
-              disabled={!uploadedImagePreview}
-              className="h-12 w-full rounded-2xl bg-[#005864] text-[16px] font-[700] text-white hover:bg-[#004852] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Save Image
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={isSignatureModalOpen} onOpenChange={setIsSignatureModalOpen}>
-        <DialogContent
-          className="w-full max-w-[700px] rounded-[24px] bg-white p-8"
-        >
-          <DialogTitle className="text-[22px] font-[700] text-[#1A1A1A]">
-            Draw Signature
-          </DialogTitle>
-          <DialogDescription className="text-[15px] leading-7 text-[rgba(24,24,24,0.8)]">
-            Draw your signature in the box below and save it.
-          </DialogDescription>
-
-          <div className="mt-4 rounded-2xl border border-[#E1EBEB] bg-[#FAFDFD] p-3">
-            <canvas
-              ref={signatureCanvasRef}
-              width={620}
-              height={280}
-              className="h-[280px] w-full cursor-crosshair rounded-xl border border-dashed border-[#CFE0E0] bg-white"
-              onMouseDown={startDrawing}
-              onMouseMove={draw}
-              onMouseUp={stopDrawing}
-              onMouseLeave={stopDrawing}
-            />
-          </div>
-
-          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Button
-              type="button"
-              onClick={clearSignatureCanvas}
-              className="h-12 rounded-2xl bg-[rgba(0,88,100,0.06)] text-[16px] font-[700] text-[#005864] hover:bg-[rgba(0,88,100,0.12)]"
-            >
-              Clear
-            </Button>
-            <Button
-              type="button"
-              onClick={handleSaveSignature}
-              className="h-12 rounded-2xl bg-[#005864] text-[16px] font-[700] text-white hover:bg-[#004852]"
-            >
-              Save Signature
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       <h1 className="text-[30px] leading-[45px] font-[600] text-[#1A1A1A] mb-6">
         Dashboard

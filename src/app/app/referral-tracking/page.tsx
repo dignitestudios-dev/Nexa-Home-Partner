@@ -65,7 +65,7 @@ function ReferralSummaryCard({
       <div>
         <p className="text-[14px] leading-[18px] text-black/80">{label}</p>
         {isLoading ? (
-          <Loader2 className="mt-1 h-5 w-5 animate-spin text-[#005864]" />
+          <div className="mt-2 h-5 w-32 animate-pulse bg-black/10" />
         ) : (
           <h3 className="mt-1 text-[20px] leading-[25px] font-semibold text-black">{value}</h3>
         )}
@@ -262,7 +262,7 @@ export default function ReferralTrackingPage() {
                     backgroundColor: "#FFFFFF",
                   }}
                   formatter={(value, name) => {
-                    if (name === "revenue") return [`$${value}`, "Revenue"];
+                    if (name === "revenue") return [`$${Number(value || 0).toFixed(2)}`, "Revenue"];
                     if (name === "signups") return [value, "Signup Users"];
                     return [value, name];
                   }}
@@ -357,16 +357,16 @@ export default function ReferralTrackingPage() {
                   }`}
               >
                 <div className="flex items-center gap-3">
-                  <img
+                  {/* <img
                     src={user.avatar || "https://i.pravatar.cc/86?img=1"}
                     alt={user.name}
                     className="h-[43px] w-[43px] rounded-full object-cover"
-                  />
-                  <span>{user.name}</span>
+                  /> */}
+                  <span>{user.userName}</span>
                 </div>
                 <span>{formatDate(user.registrationDate)}</span>
                 <span>{user.jobsPosted}</span>
-                <span>${user.revenueGenerated}</span>
+                <span>${Number(user.revenueGenerated || 0).toFixed(2)}</span>
               </div>
             ))}
             {!activityLoading && activity.length === 0 ? (
