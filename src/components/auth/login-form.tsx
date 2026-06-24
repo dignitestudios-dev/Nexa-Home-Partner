@@ -99,14 +99,13 @@ export default function LoginForm() {
     }
   };
   const onSubmit = async (data: AuthFlowData) => {
-    // 👇 NAYI LOGIC: Agar email abhi verify/submit nahi hui, 
-    // toh sirf handleContinue chalao aur function se wapas (return) ho jao.
+
+
+
     if (!emailSubmitted) {
       await handleContinue();
       return;
     }
-
-    // 👇 Yahan se apka purana Auth/Login ka code shuru hota hai
     dispatch(clearError());
 
     const loginResult = await dispatch(
@@ -121,6 +120,8 @@ export default function LoginForm() {
       console.log(user);
 
       toast.success(loginResult.payload?.message || "Login successful");
+
+
 
       if (user?.isEmailVerified) {
         if (user?.isProfileCompleted) {
@@ -257,42 +258,27 @@ export default function LoginForm() {
             {!userExists && (
               <div className="mb-4">
                 <label className="text-[16px] font-[500] leading-[22px] text-[#1C1C1C]">
-                  Email
+                  Confirm Password
                 </label>
-                <div className="relative">
+                <div className="relative mt-[6px]">
                   <Input
-                    type="text"
-                    placeholder="mikesmith@gmail.com"
-                    disabled={emailSubmitted && !loading}
-                    value={emailSubmitted ? getValues("email").trim() : undefined}
-                    className="mt-[6px] h-[48px] rounded-[12px] bg-[#F8F8F8] border-0 px-4 text-[16px] placeholder:text-[#181818]/50 focus-visible:ring-0 focus-visible:border-transparent shadow-none"
-                    {...register("email", {
-                      setValueAs: (val) => val.trim(),
-                    })}
-                    // 👇 Yeh naya event handler add karein
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !emailSubmitted) {
-                        e.preventDefault(); // Enter press karne par default form submission ko rokega
-                        handleContinue();   // Mouse click ki tarah email verification API hit karega
-                      }
-                    }}
+                    type={showConfirmPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    className="h-[48px] rounded-[12px] bg-[#F8F8F8] border-0 px-4 pr-12 text-[16px] placeholder:text-[#181818]/50 focus-visible:ring-0 focus-visible:border-transparent shadow-none"
+                    {...register("confirmPassword")}
                   />
-                  {emailSubmitted && !loading && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEmailSubmitted(false);
-                        setUserExists(false);
-                      }}
-                      className="absolute right-3 top-[18px] text-[12px] text-[#005864] font-semibold"
-                    >
-                      Change
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-[#181818]/70"
+                    aria-label="Toggle confirm password visibility"
+                  >
+                    {showConfirmPassword ? <Eye size={18} /> : <EyeClosed size={18} />}
+                  </button>
                 </div>
-                <div className="mt-2">
-                  {errors.email && (
-                    <div className="text-red-600 text-sm">{errors.email.message}</div>
+                <div className="min-h-[20px] mt-2">
+                  {errors.confirmPassword && (
+                    <div className="text-red-600 text-sm">{errors.confirmPassword.message}</div>
                   )}
                 </div>
               </div>
