@@ -90,8 +90,9 @@ export default function RevenueSummaryPage() {
 
     {
       title: "Total Revenue",
-      value: "$" + (stats?.revenueGenerated?.toLocaleString() || "0"),
+      value: "$" + (stats?.revenueGenerated?.value?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || "0"),
       icon: TrendingUp,
+      increase: stats?.revenueGenerated?.increasePercentThisMonth || 0,
     },
   ];
 
@@ -126,7 +127,7 @@ export default function RevenueSummaryPage() {
               </div>
               <div className="bg-[#005864] py-3 px-5 flex items-center gap-2 text-white font-medium text-sm">
                 <TrendingIcon className="w-4 h-4" />
-                12 increase this month
+                {item.increase}% increase this month
               </div>
             </CardContent>
           </Card>
@@ -168,6 +169,10 @@ export default function RevenueSummaryPage() {
               <div className="flex h-full items-center justify-center text-red-500">
                 {chartsError}
               </div>
+            ) : !chartData || chartData.length === 0 ? (
+              <div className="flex h-full items-center justify-center text-sm text-black/40">
+                No Revenue Data Available!
+              </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart
@@ -208,7 +213,7 @@ export default function RevenueSummaryPage() {
                   />
 
                   <Tooltip
-                    formatter={(value) => [`$${value}`, "Revenue"]}
+                    formatter={(value) => [`$${Number(value || 0).toFixed(2)}`, "Revenue"]}
                     contentStyle={{
                       borderRadius: 12,
                       border: "1px solid #E8ECEF",

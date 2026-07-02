@@ -2,10 +2,9 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { getDashboardSummary, getRevenueAnalysis, getGrowthTracking } from "../api/dashboard.api";
 
 export interface DashboardStats {
-  jobsPosted: number;
-  usersAdded: number;
-  revenueGenerated: number;
-  revenueIncreaseThisMonth: number;
+  jobsPosted?: { value: number; increasePercentThisMonth: number };
+  usersAdded?: { value: number; increasePercentThisMonth: number };
+  revenueGenerated?: { value: number; increasePercentThisMonth: number };
 }
 
 export interface RevenueAnalysisItem {
@@ -112,7 +111,7 @@ const dashboardSlice = createSlice({
       })
       .addCase(fetchDashboardSummary.fulfilled, (state, action) => {
         state.loading = false;
-        state.stats = action.payload;
+        state.stats = action.payload.data || action.payload;
       })
       .addCase(fetchDashboardSummary.rejected, (state, action) => {
         state.loading = false;

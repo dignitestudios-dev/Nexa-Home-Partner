@@ -32,7 +32,7 @@ const ITEMS_PER_PAGE = 10;
 
 export default function CsvUploadPage() {
   const dispatch = useDispatch<AppDispatch>();
-  const { invitations, total, loading, error, uploadError, uploading } = useSelector((state: RootState) => state.csv);
+  const { invitations, total, loading, error, uploadError, uploading, uploadResult } = useSelector((state: RootState) => state.csv);
 
   const [searchValue, setSearchValue] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
@@ -46,6 +46,31 @@ export default function CsvUploadPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [ValidErr, setValidErr] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      if (file.name.endsWith(".csv") || file.type === "text/csv") {
+        setPendingCsvFile(file);
+      } else {
+        toast.error("Please upload a valid CSV file");
+      }
+    }
+  };
+
   console.log("CSVdasdsadsa upload failed:123", uploadError);
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -238,7 +263,7 @@ export default function CsvUploadPage() {
 
           {!loading && displayRows.length === 0 ? (
             <p className="py-14 text-center text-[15px] text-black/60">
-              {error || "No records found for the selected filters."}
+              {error || "No Data Available. Please upload a CSV file."}
             </p>
           ) : null}
         </div>
@@ -266,14 +291,11 @@ export default function CsvUploadPage() {
         </button>
       </div>
 
-      <div
-        className={`fixed inset-0 z-40 bg-black/30 transition-opacity duration-300 ${isFilterOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
-          }`}
-        onClick={() => setIsFilterOpen(false)}
+      <div className={`fixed inset-0 z-40 bg-black/30 transition-opacity duration-300 ${isFilterOpen ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"
+        }`} onClick={() => setIsFilterOpen(false)}
       />
-      <aside
-        className={`fixed right-0 top-0 z-50 h-full w-full max-w-[390px] bg-white shadow-2xl transition-transform duration-300 ${isFilterOpen ? "translate-x-0" : "translate-x-full"
-          }`}
+      <aside className={`fixed right-0 top-0 z-50 h-full w-full max-w-[390px] bg-white shadow-2xl transition-transform duration-300 ${isFilterOpen ? "translate-x-0" : "translate-x-full"
+        }`}
       >
         <div className="flex items-center justify-between border-b border-[#EEEEEE] px-5 py-4">
           <h3 className="text-[22px] font-semibold text-[#1C1C1C]">Filters</h3>
@@ -371,14 +393,34 @@ export default function CsvUploadPage() {
           </DialogHeader>
 
           <div className="px-10">
-            <label className="flex h-[151px] cursor-pointer flex-col items-center justify-center rounded-[12px] border border-dashed border-[#005864] bg-[#F8F8F8]">
+            <label
+              className={`flex h-[151px] cursor-pointer flex-col items-center justify-center rounded-[12px] border border-dashed transition-colors ${isDragging ? "border-[#005864] bg-[#005864]/10" : "border-[#005864] bg-[#F8F8F8]"
+                }`}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+            >
               <Upload size={30} className="text-[#181818]/80" />
-              <span className="mt-3 text-[15px] font-medium text-[#1C1C1C]">Upload CSV</span>
+              <span className="mt-3 text-[15px] font-medium text-[#1C1C1C]">Upload CSV (Drag & Drop or Click)</span>
+              <span className="mt-1 text-[12px] text-black/50">Supported format: CSV only</span>
               <input
                 type="file"
                 accept=".csv"
                 className="hidden"
-                onChange={(event) => setPendingCsvFile(event.target.files?.[0] ?? null)}
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) {
+                    setPendingCsvFile(null);
+                    return;
+                  }
+                  if (file.name.endsWith(".csv") || file.type === "text/csv") {
+                    setPendingCsvFile(file);
+                  } else {
+                    toast.error("Please upload a valid CSV file");
+                    event.target.value = "";
+                    setPendingCsvFile(null);
+                  }
+                }}
               />
             </label>
           </div>
@@ -395,7 +437,7 @@ export default function CsvUploadPage() {
                 </button>
                 <div className="flex h-full flex-col items-center justify-center gap-2 px-2 text-center">
                   <FileSpreadsheet size={38} className="text-black" />
-                  <p className="line-clamp-2 text-[10px] font-medium text-[#1C1C1C]">
+                  <p className="line-clamp-3 break-all text-[10px] font-medium text-[#1C1C1C]">
                     {pendingCsvFile.name}
                   </p>
                 </div>
@@ -408,7 +450,7 @@ export default function CsvUploadPage() {
               type="button"
               disabled={!pendingCsvFile || uploading}
               onClick={() => handleFileUpload()}
-              className="h-12 w-full rounded-[12px] bg-[#005864] text-[16px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              className="h-12 w-full cursor-pointer rounded-[12px] bg-[#005864] text-[16px] font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
               {uploading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -448,6 +490,34 @@ export default function CsvUploadPage() {
               <p className="mt-4 text-center text-[18px] leading-[23px] text-[#181818]/80">
                 File has been uploaded successfully.
               </p>
+
+              {uploadResult && (
+                <div className="mt-6 w-full rounded-[16px] bg-[#F8F8F8] p-5 text-[14px] text-gray-700">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="font-semibold text-[#1C1C1C]">Total Rows:</span>
+                    <span>{uploadResult.total}</span>
+                  </div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="font-semibold text-[#005864]">Sent Successfully:</span>
+                    <span>{uploadResult.sent}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-semibold text-red-500">Skipped/Errors:</span>
+                    <span>{uploadResult.skipped}</span>
+                  </div>
+
+                  {uploadResult.errors && uploadResult.errors.length > 0 && (
+                    <div className="mt-4 bg-red-50 p-3 rounded-xl max-h-[120px] overflow-y-auto border border-red-100">
+                      <p className="font-semibold text-red-600 mb-2 text-xs">Error Details:</p>
+                      {uploadResult.errors.map((err: any, idx: number) => (
+                        <p key={idx} className="text-xs text-red-500 mb-1">
+                          Row {err.row}: {err.reason}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </DialogContent>

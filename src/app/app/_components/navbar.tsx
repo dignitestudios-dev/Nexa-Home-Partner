@@ -22,8 +22,8 @@ import { FaUserEdit } from "react-icons/fa";
 
 export default function Navbar() {
   const router = useRouter();
-  const {user} = useSelector((state: RootState) => state.auth);
-  const profile = user?.data;  
+  const { user } = useSelector((state: RootState) => state.auth);
+  const profile = user?.data;
   console.log(user);
   const dispatch = useDispatch<AppDispatch>();
 
@@ -39,8 +39,8 @@ export default function Navbar() {
 
   return (
     <div className="w-full  rounded-2xl px-6 py-6 flex items-center justify-between ">
-    <p className="text-xl font-medium">Welcome,<span className="text-[#004D54] font-semibold">{profile?.name || "User"}</span></p>
-      <div /> 
+      <p className="text-xl font-medium">Welcome,<span className="text-[#004D54] font-semibold">{profile?.name || "User"}</span></p>
+      <div />
 
       {/* USER DROPDOWN */}
       <DropdownMenu>
@@ -65,10 +65,10 @@ export default function Navbar() {
         <DropdownMenuContent align="end" className="w-48">
 
 
-           <DropdownMenuItem asChild>
+          <DropdownMenuItem asChild>
             <Link href="/app/edited-profile">
-                <FaUserEdit className="w-4 h-4 mr-2" />
-                Edit Profile
+              <FaUserEdit className="w-4 h-4 mr-2" />
+              Edit Profile
             </Link>
           </DropdownMenuItem>
           {/* CHANGE PASSWORD */}
@@ -78,7 +78,6 @@ export default function Navbar() {
               Change Password
             </Link>
           </DropdownMenuItem>
-
           {/* LOGOUT */}
           <DropdownMenuItem
             variant="destructive"

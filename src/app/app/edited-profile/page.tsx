@@ -37,7 +37,7 @@ export default function EditProfilePage() {
   const [logoPreviewUrl, setLogoPreviewUrl] = useState<string>(
     user?.profilePicture || user?.data?.profilePicture?.location || "",
   );
-const phoneNumber: string = user?.data?.phone || "";
+  const phoneNumber: string = user?.data?.phone || "";
 
   const {
     register,
@@ -84,53 +84,59 @@ const phoneNumber: string = user?.data?.phone || "";
   //   }
   // }, [user, reset]);
   // Handle Image Selection and Preview
-const handleImageChange = async (
-  e: React.ChangeEvent<HTMLInputElement>
-) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
+  const handleImageChange = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  // ❌ Size validation
-  const minSize = 10 * 1024; // 10KB
-  const maxSize = 25 * 1024 * 1024; // 25MB
-
-  if (file.size < minSize) {
-    toast.error("Image is too small (min 10KB)");
-    console.log(file.size,"Image is too small (min 10KB)")
-    return;
-  }
-  console.log(file.size,"Image is too large (max 25MB)")
-  if (file.size > maxSize) {
-    toast.error("Image is too large (max 25MB)");
-    return;
-  }
-
-  // ❌ Resolution validation
-  const img = new Image();
-  const objectUrl = URL.createObjectURL(file);
-
-  img.onload = () => {
-    const width = img.width;
-    const height = img.height;
-
-    URL.revokeObjectURL(objectUrl);
-
-    if (width < 256 || height < 256) {
-      toast.error("Image resolution must be at least 256x256 px");
+    // ❌ GIF validation
+    if (file.type === "image/gif" || file.name.toLowerCase().endsWith(".gif")) {
+      toast.error("GIF images are not allowed");
       return;
     }
 
-    // ✅ valid image
-    setValue("profilePicture", file, { shouldValidate: true });
-    setLogoPreviewUrl(URL.createObjectURL(file));
-  };
+    // ❌ Size validation
+    const minSize = 10 * 1024; // 10KB
+    const maxSize = 25 * 1024 * 1024; // 25MB
 
-  img.onerror = () => {
-    toast.error("Invalid image file");
-  };
+    if (file.size < minSize) {
+      toast.error("Image is too small (min 10KB)");
+      console.log(file.size, "Image is too small (min 10KB)")
+      return;
+    }
+    console.log(file.size, "Image is too large (max 25MB)")
+    if (file.size > maxSize) {
+      toast.error("Image is too large (max 25MB)");
+      return;
+    }
 
-  img.src = objectUrl;
-};
+    // ❌ Resolution validation
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    img.onload = () => {
+      const width = img.width;
+      const height = img.height;
+
+      URL.revokeObjectURL(objectUrl);
+
+      if (width < 256 || height < 256) {
+        toast.error("Image resolution must be at least 256x256 px");
+        return;
+      }
+
+      // ✅ valid image
+      setValue("profilePicture", file, { shouldValidate: true });
+      setLogoPreviewUrl(URL.createObjectURL(file));
+    };
+
+    img.onerror = () => {
+      toast.error("Invalid image file");
+    };
+
+    img.src = objectUrl;
+  };
   const onSubmit = async (data: EditProfileFormData) => {
     dispatch(clearError());
 
@@ -237,6 +243,9 @@ const handleImageChange = async (
             >
               Change Profile Image
             </label>
+            <p className="mt-1.5 text-[13px] text-black/50">
+              Allowed formats: JPG, PNG, JPEG
+            </p>
           </div>
 
           <div className="space-y-5">

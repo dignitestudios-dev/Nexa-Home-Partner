@@ -19,8 +19,7 @@ export default function SignatureGuard({ children }: SignatureGuardProps) {
   const { user } = useSelector((state: RootState) => state.auth);
 
   const [isAgreementModalOpen, setIsAgreementModalOpen] = useState(false);
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [isTypeModalOpen, setIsTypeModalOpen] = useState(false);
+  const [currentScreen, setCurrentScreen] = useState<'agreement' | 'upload' | 'type'>('agreement');
 
   const [uploadedImagePreview, setUploadedImagePreview] = useState<string | null>(null);
   const [uploadedImageName, setUploadedImageName] = useState("");
@@ -36,20 +35,17 @@ export default function SignatureGuard({ children }: SignatureGuardProps) {
       const hasSignature = !!(user.signature || user.data?.signature);
       setIsAgreementModalOpen(!hasSignature);
       if (hasSignature) {
-        setIsUploadModalOpen(false);
-        setIsTypeModalOpen(false);
+        setCurrentScreen('agreement');
       }
     }
   }, [user]);
 
   const openUploadModal = () => {
-    setIsAgreementModalOpen(false);
-    setIsUploadModalOpen(true);
+    setCurrentScreen('upload');
   };
 
   const openTypeModal = () => {
-    setIsAgreementModalOpen(false);
-    setIsTypeModalOpen(true);
+    setCurrentScreen('type');
   };
 
   const handleImageSelection = (event: ChangeEvent<HTMLInputElement>) => {
@@ -57,6 +53,15 @@ export default function SignatureGuard({ children }: SignatureGuardProps) {
     if (!file) {
       return;
     }
+
+    if (!file.type.startsWith("image/") || file.type === "image/gif" || file.name.toLowerCase().endsWith(".gif")) {
+      toast.error("Please upload a valid image file (JPG, PNG, JPEG). GIF is not allowed.");
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      return;
+    }
+
     setUploadedFile(file);
 
     const reader = new FileReader();
@@ -72,8 +77,7 @@ export default function SignatureGuard({ children }: SignatureGuardProps) {
       return;
     }
     setSavedSignaturePreview(null);
-    setIsUploadModalOpen(false);
-    setIsAgreementModalOpen(true);
+    setCurrentScreen('agreement');
   };
 
   const handleSaveTypedSignature = () => {
@@ -100,8 +104,7 @@ export default function SignatureGuard({ children }: SignatureGuardProps) {
     setUploadedFile(null);
     setUploadedImagePreview(null);
     setUploadedImageName("");
-    setIsTypeModalOpen(false);
-    setIsAgreementModalOpen(true);
+    setCurrentScreen('agreement');
   };
 
   const dataUrlToFile = async (dataUrl: string, filename: string): Promise<File> => {
@@ -158,168 +161,180 @@ export default function SignatureGuard({ children }: SignatureGuardProps) {
           const hasSignature = !!(user?.signature || user?.data?.signature);
           if (hasSignature) {
             setIsAgreementModalOpen(open);
+            setCurrentScreen('agreement');
           }
         }}
       >
         <DialogContent
           showCloseButton={false}
-          className="w-full max-w-[900px] rounded-[24px] bg-white p-10 z-[100]"
+          className={`w-full transition-all duration-300 rounded-[20px] bg-white p-10 z-[100] ${currentScreen === 'agreement' ? 'max-w-[900px] max-h-[95vh] overflow-y-auto' : 'max-w-[620px] max-h-[90vh] overflow-y-auto'
+            }`}
         >
-          <DialogTitle className="text-[24px] font-[700] leading-[30px] text-black">
-            Agreement
-          </DialogTitle>
+          {currentScreen === 'agreement' && (
+            <>
+              <DialogTitle className="text-[24px] font-[700] leading-[30px] text-black">
+                Agreement
+              </DialogTitle>
 
-          <DialogDescription className="mt-3 h-[448px] overflow-y-auto pr-2 text-[16px] font-[400] leading-[32px] text-[rgba(24,24,24,0.8)]">
-            Lorem ipsum dolor sit amet consectetur. Diam aliquet lectus laoreet
-            enim faucibus vitae facilisi. Quis amet imperdiet ut molestie luctus
-            risus lacinia. Mauris vel mus at urna vulputate aliquet eu. Quis amet
-            imperdiet ut molestie luctus risus lacinia. Mauris vel mus at urna
-            vulputate aliquet eu. Lorem ipsum dolor sit amet consectetur. Diam
-            aliquet lectus laoreet enim faucibus vitae facilisi. Quis amet
-            imperdiet ut molestie luctus risus lacinia. Mauris vel mus at urna
-            vulputate aliquet eu. Quis amet imperdiet ut molestie luctus risus
-            lacinia. Mauris vel mus at urna vulputate aliquet eu. Lorem ipsum
-            dolor sit amet consectetur. Diam aliquet lectus laoreet enim faucibus
-            vitae facilisi. Quis amet imperdiet ut molestie luctus risus lacinia.
-            Mauris vel mus at urna vulputate aliquet eu. Quis amet imperdiet ut
-            molestie luctus risus lacinia. Mauris vel mus at urna vulputate
-            aliquet eu. Lorem ipsum dolor sit amet consectetur.
-          </DialogDescription>
+              <DialogDescription className="mt-3 h-[448px] overflow-y-auto pr-2 text-[16px] font-[400] leading-[32px] text-[rgba(24,24,24,0.8)]">
+                Lorem ipsum dolor sit amet consectetur. Diam aliquet lectus laoreet
+                enim faucibus vitae facilisi. Quis amet imperdiet ut molestie luctus
+                risus lacinia. Mauris vel mus at urna vulputate aliquet eu. Quis amet
+                imperdiet ut molestie luctus risus lacinia. Mauris vel mus at urna
+                vulputate aliquet eu. Lorem ipsum dolor sit amet consectetur. Diam
+                aliquet lectus laoreet enim faucibus vitae facilisi. Quis amet
+                imperdiet ut molestie luctus risus lacinia. Mauris vel mus at urna
+                vulputate aliquet eu. Quis amet imperdiet ut molestie luctus risus
+                lacinia. Mauris vel mus at urna vulputate aliquet eu. Lorem ipsum
+                dolor sit amet consectetur. Diam aliquet lectus laoreet enim faucibus
+                vitae facilisi. Quis amet imperdiet ut molestie luctus risus lacinia.
+                Mauris vel mus at urna vulputate aliquet eu. Quis amet imperdiet ut
+                molestie luctus risus lacinia. Mauris vel mus at urna vulputate
+                aliquet eu. Lorem ipsum dolor sit amet consectetur.
+              </DialogDescription>
 
-          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <Button
-              type="button"
-              onClick={openUploadModal}
-              className="h-12 rounded-2xl bg-[rgba(0,88,100,0.06)] text-[16px] font-[700] text-[#005864] capitalize hover:bg-[rgba(0,88,100,0.12)]"
-            >
-              Upload Image
-            </Button>
-            <Button
-              type="button"
-              onClick={openTypeModal}
-              className="h-12 rounded-2xl bg-[#005864] text-[16px] font-[700] text-white capitalize hover:bg-[#004852]"
-            >
-              Type Signature
-            </Button>
-          </div>
+              <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Button
+                  type="button"
+                  onClick={openUploadModal}
+                  className="h-12 rounded-2xl bg-[rgba(0,88,100,0.06)] text-[16px] font-[700] text-[#005864] capitalize hover:bg-[rgba(0,88,100,0.12)]"
+                >
+                  Upload Image
+                </Button>
+                <Button
+                  type="button"
+                  onClick={openTypeModal}
+                  className="h-12 rounded-2xl bg-[#005864] text-[16px] font-[700] text-white capitalize hover:bg-[#004852]"
+                >
+                  Type Signature
+                </Button>
+              </div>
 
-          <Button
-            type="button"
-            onClick={handleSubmitSignature}
-            disabled={isSubmitting}
-            className="mt-6 h-12 w-full rounded-2xl bg-[#005864] text-[16px] font-[700] text-white capitalize hover:bg-[#004852] flex items-center justify-center gap-2"
-          >
-            {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-            Submit & Accept Agreement
-          </Button>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={isUploadModalOpen}
-        onOpenChange={(open) => {
-          setIsUploadModalOpen(open);
-          if (!open) {
-            const hasSignature = !!(user?.signature || user?.data?.signature);
-            if (!hasSignature) {
-              setIsAgreementModalOpen(true);
-            }
-          }
-        }}
-      >
-        <DialogContent
-          className="w-full max-w-[620px] rounded-[24px] bg-white p-8 z-[110]"
-        >
-          <DialogTitle className="text-[22px] font-[700] text-[#1A1A1A]">
-            Upload Image
-          </DialogTitle>
-          <DialogDescription className="text-[15px] leading-7 text-[rgba(24,24,24,0.8)]">
-            Select an image file, preview it, then click save.
-          </DialogDescription>
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handleImageSelection}
-          />
-
-          <div className="mt-4 space-y-4">
-            <Button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="h-12 w-full rounded-2xl bg-[rgba(0,88,100,0.06)] text-[16px] font-[700] text-[#005864] hover:bg-[rgba(0,88,100,0.12)]"
-            >
-              Choose Image
-            </Button>
-
-            <div className="h-[250px] rounded-2xl border border-dashed border-[#CFE0E0] bg-[#F9FCFC] p-3">
-              {uploadedImagePreview ? (
-                <img
-                  src={uploadedImagePreview}
-                  alt="Selected upload preview"
-                  className="h-full w-full rounded-xl object-contain"
-                />
-              ) : (
-                <div className="flex h-full items-center justify-center text-sm text-gray-500">
-                  No image selected yet
+              {(savedSignaturePreview || uploadedImagePreview) && (
+                <div className="mt-6 flex flex-col items-center justify-center rounded-2xl border border-dashed border-[#CFE0E0] bg-[#F9FCFC] p-4 h-[120px]">
+                  <span className="text-xs font-medium text-gray-500 mb-2">Signature Preview</span>
+                  <img
+                    src={savedSignaturePreview || uploadedImagePreview || ""}
+                    alt="Signature Preview"
+                    className="max-h-[70px] max-w-full object-contain"
+                  />
                 </div>
               )}
-            </div>
 
-            <Button
-              type="button"
-              onClick={handleSaveImage}
-              disabled={!uploadedImagePreview}
-              className="h-12 w-full rounded-2xl bg-[#005864] text-[16px] font-[700] text-white hover:bg-[#004852] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Save Image
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+              <Button
+                type="button"
+                onClick={handleSubmitSignature}
+                disabled={isSubmitting}
+                className="mt-6 h-12 w-full rounded-2xl bg-[#005864] text-[16px] font-[700] text-white capitalize hover:bg-[#004852] flex items-center justify-center gap-2"
+              >
+                {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                Submit & Accept Agreement
+              </Button>
+            </>
+          )}
 
-      <Dialog
-        open={isTypeModalOpen}
-        onOpenChange={(open) => {
-          setIsTypeModalOpen(open);
-          if (!open) {
-            const hasSignature = !!(user?.signature || user?.data?.signature);
-            if (!hasSignature) {
-              setIsAgreementModalOpen(true);
-            }
-          }
-        }}
-      >
-        <DialogContent
-          className="w-full max-w-[620px] rounded-[24px] bg-white p-8 z-[110]"
-        >
-          <DialogTitle className="text-[22px] font-[700] text-[#1A1A1A]">
-            Type Signature
-          </DialogTitle>
-          <DialogDescription className="text-[15px] leading-7 text-[rgba(24,24,24,0.8)]">
-            Type your name below, choose cursive style, then click save.
-          </DialogDescription>
+          {currentScreen === 'upload' && (
+            <>
+              <DialogTitle className="text-[22px] font-[700] text-[#1A1A1A]">
+                Upload Image
+              </DialogTitle>
+              <DialogDescription className="text-[15px] leading-7 text-[rgba(24,24,24,0.8)]">
+                Select an image file, preview it, then click save.
+              </DialogDescription>
 
-          <div className="mt-4 space-y-4">
-            <input
-              type="text"
-              placeholder="Type your full name"
-              value={typedSignature}
-              onChange={(e) => setTypedSignature(e.target.value)}
-              className="h-12 w-full rounded-2xl border border-[#CFE0E0] bg-[#F9FCFC] px-4 text-sm text-black placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-[#005864]"
-            />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageSelection}
+              />
 
-            <Button
-              type="button"
-              onClick={handleSaveTypedSignature}
-              disabled={!typedSignature.trim()}
-              className="h-12 w-full rounded-2xl bg-[#005864] text-[16px] font-[700] text-white hover:bg-[#004852] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              Save Signature
-            </Button>
-          </div>
+              <div className="mt-4 space-y-4">
+                <Button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="h-12 w-full rounded-2xl bg-[rgba(0,88,100,0.06)] text-[16px] font-[700] text-[#005864] hover:bg-[rgba(0,88,100,0.12)]"
+                >
+                  Choose Image
+                </Button>
+                <p className="text-center text-[13px] text-black/50 mt-1">
+                  Allowed formats: JPG, PNG, JPEG
+                </p>
+
+                <div className="h-[250px] rounded-2xl border border-dashed border-[#CFE0E0] bg-[#F9FCFC] p-3">
+                  {uploadedImagePreview ? (
+                    <img
+                      src={uploadedImagePreview}
+                      alt="Selected upload preview"
+                      className="h-full w-full rounded-xl object-contain"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-sm text-gray-500">
+                      No image selected yet
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <Button
+                    type="button"
+                    onClick={() => setCurrentScreen('agreement')}
+                    className="h-12 w-full rounded-2xl bg-[rgba(0,88,100,0.06)] text-[16px] font-[700] text-[#005864] hover:bg-[rgba(0,88,100,0.12)]"
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleSaveImage}
+                    disabled={!uploadedImagePreview}
+                    className="h-12 w-full rounded-2xl bg-[#005864] text-[16px] font-[700] text-white hover:bg-[#004852] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Save Image
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {currentScreen === 'type' && (
+            <>
+              <DialogTitle className="text-[22px] font-[700] text-[#1A1A1A]">
+                Type Signature
+              </DialogTitle>
+              <DialogDescription className="text-[15px] leading-7 text-[rgba(24,24,24,0.8)]">
+                Type your name below, choose cursive style, then click save.
+              </DialogDescription>
+
+              <div className="mt-4 space-y-4">
+                <input
+                  type="text"
+                  placeholder="Type your full name"
+                  value={typedSignature}
+                  onChange={(e) => setTypedSignature(e.target.value)}
+                  className="h-12 w-full rounded-2xl border border-[#CFE0E0] bg-[#F9FCFC] px-4 text-sm text-black placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-[#005864]"
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <Button
+                    type="button"
+                    onClick={() => setCurrentScreen('agreement')}
+                    className="h-12 w-full rounded-2xl bg-[rgba(0,88,100,0.06)] text-[16px] font-[700] text-[#005864] hover:bg-[rgba(0,88,100,0.12)]"
+                  >
+                    Back
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={handleSaveTypedSignature}
+                    disabled={!typedSignature.trim()}
+                    className="h-12 w-full rounded-2xl bg-[#005864] text-[16px] font-[700] text-white hover:bg-[#004852] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Save Signature
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </>

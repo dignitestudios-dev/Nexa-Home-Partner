@@ -15,7 +15,11 @@ import {
   TrendingUp as TrendingIcon,
   ChevronDown,
   Loader2,
+  Landmark,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { connectBankAccount, getBankAccountStatus } from "@/lib/api/dashboard.api";
 import {
   Bar,
   BarChart,
@@ -48,9 +52,42 @@ export default function DashboardPage() {
     growthTrackingLoading,
     growthTrackingError,
   } = useSelector((state: RootState) => state.dashboard);
-
   const [revenueGroupBy, setRevenueGroupBy] = useState<"month" | "year">("month");
   const [growthGroupBy, setGrowthGroupBy] = useState<"month" | "year">("month");
+  const [isConnectingBank, setIsConnectingBank] = useState(false);
+  const [bankStatus, setBankStatus] = useState<string | null>(null);
+  const [isLoadingBankStatus, setIsLoadingBankStatus] = useState(true);
+
+  useEffect(() => {
+    const fetchBankStatus = async () => {
+      try {
+        const res = await getBankAccountStatus();
+        console.log(res.data, "getBankAccountStatus");
+        setBankStatus(res.data.stripeConnect.stripeAccountStatus);
+      } catch (err) {
+        setBankStatus(null);
+      } finally {
+        setIsLoadingBankStatus(false);
+      }
+    };
+    fetchBankStatus();
+  }, []);
+
+  const handleConnectBank = async () => {
+    try {
+      setIsConnectingBank(true);
+      const res = await connectBankAccount(`${window.location.origin}/app/dashboard`);
+      if (res.data?.url) {
+        window.location.href = res.data.url;
+      } else {
+        toast.success(res.message || "Connected successfully");
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to connect bank account");
+    } finally {
+      setIsConnectingBank(false);
+    }
+  };
 
   useEffect(() => {
     dispatch(fetchDashboardSummary());
@@ -64,6 +101,7 @@ export default function DashboardPage() {
     dispatch(fetchGrowthTracking({ groupBy: growthGroupBy, months: growthGroupBy === "month" ? 12 : 5 }));
   }, [dispatch, growthGroupBy]);
 
+  console.log(growthTrackingError, "growthTrackingError");
 
 
   const formatPeriod = (period: string, groupBy: "month" | "year") => {
@@ -93,26 +131,29 @@ export default function DashboardPage() {
 
   const growthChartData = growthTracking?.series?.map((item: any) => ({
     month: formatPeriod(item.period, growthGroupBy),
-    referralSignups: item.signups,
-    jobsViaReferral: item.jobsPosted,
+    "Referral Signups": item.signups,
+    "Jobs Via Referral": item.jobsPosted,
   }));
 
 
   const dashboardStats = [
     {
       title: "Total Users",
-      value: stats?.usersAdded?.toLocaleString() || "0",
+      value: stats?.usersAdded?.value?.toLocaleString() || "0",
       icon: Users,
+      increase: stats?.usersAdded?.increasePercentThisMonth || 0,
     },
     {
       title: "Total Jobs Posted",
-      value: stats?.jobsPosted?.toLocaleString() || "",
+      value: stats?.jobsPosted?.value?.toLocaleString() || "0",
       icon: Briefcase,
+      increase: stats?.jobsPosted?.increasePercentThisMonth || 0,
     },
     {
       title: "Total Revenue",
-      value: "$" + stats?.revenueGenerated?.toLocaleString() || "0",
+      value: "$" + (stats?.revenueGenerated?.value?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) || "0"),
       icon: TrendingUp,
+      increase: stats?.revenueGenerated?.increasePercentThisMonth || 0,
     },
   ];
 
@@ -120,9 +161,30 @@ export default function DashboardPage() {
     <div className="min-h-screen">
 
 
-      <h1 className="text-[30px] leading-[45px] font-[600] text-[#1A1A1A] mb-6">
-        Dashboard
-      </h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
+        <h1 className="text-[30px] leading-[45px] font-[600] text-[#1A1A1A]">
+          Dashboard
+        </h1>
+        {isLoadingBankStatus ? (
+          <div className="h-12 flex items-center justify-center px-4">
+            <Loader2 className="w-5 h-5 animate-spin text-[#005864]" />
+          </div>
+        ) : bankStatus === "approved" ? (
+          <div className="h-12 flex items-center rounded-2xl bg-[rgba(0,88,100,0.06)] px-5 text-[16px] font-[700] text-[#005864] capitalize">
+            <Landmark className="w-5 h-5 mr-2" />
+            Status: {bankStatus}
+          </div>
+        ) : (
+          <Button
+            onClick={handleConnectBank}
+            disabled={isConnectingBank}
+            className="h-12 rounded-2xl bg-[#005864] text-[16px] font-[700] text-white hover:bg-[#004852]"
+          >
+            {isConnectingBank ? <Loader2 className="w-5 h-5 animate-spin mr-2" /> : <Landmark className="w-5 h-5 mr-2" />}
+            Connect Bank Account
+          </Button>
+        )}
+      </div>
 
       {/* Top Metrics Row */}
       {loading ? (
@@ -132,6 +194,10 @@ export default function DashboardPage() {
       ) : error ? (
         <div className="text-red-500 text-center py-10 bg-red-50 rounded-2xl mb-6">
           {error}
+        </div>
+      ) : !stats || Object.keys(stats).length === 0 ? (
+        <div className="flex items-center justify-center py-10 text-sm text-black/40">
+          No data available.
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mb-6">
@@ -159,7 +225,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="bg-[#005864] py-3 px-5 flex items-center gap-2 text-white font-medium text-sm">
                   <TrendingIcon className="w-4 h-4" />
-                  {stats?.revenueIncreaseThisMonth || 0} increase this month
+                  {item.increase}% increase this month
                 </div>
               </CardContent>
             </Card>
@@ -207,6 +273,10 @@ export default function DashboardPage() {
               <div className="flex h-full items-center justify-center text-red-500">
                 {chartsError}
               </div>
+            ) : !chartData || chartData.length === 0 ? (
+              <div className="flex h-full items-center justify-center text-sm text-black/40">
+                No Revenue Data Available.
+              </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart
@@ -243,11 +313,11 @@ export default function DashboardPage() {
                     tickLine={false}
                     axisLine={false}
                     tick={{ fill: "#9CA3AF", fontSize: 11, fontWeight: 700 }}
-                    tickFormatter={(value) => `$${value}`}
+                    tickFormatter={(value) => Number(value || 0).toFixed(2)}
                   />
 
                   <Tooltip
-                    formatter={(value) => [`$${value}`, "Revenue"]}
+                    formatter={(value) => [`$${Number(value || 0).toFixed(2)}`, "Revenue"]}
                     contentStyle={{
                       borderRadius: 12,
                       border: "1px solid #E8ECEF",
@@ -312,6 +382,11 @@ export default function DashboardPage() {
             ) : growthTrackingError ? (
               <div className="flex h-full items-center justify-center text-red-500">
                 {growthTrackingError}
+
+              </div>
+            ) : !growthChartData || growthChartData.length === 0 ? (
+              <div className="flex h-full items-center justify-center text-sm text-black/40">
+                No Growth Data Available.
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
@@ -341,13 +416,13 @@ export default function DashboardPage() {
                   />
                   <Legend wrapperStyle={{ display: "none" }} />
                   <Bar
-                    dataKey="referralSignups"
+                    dataKey="Referral Signups"
                     fill="#005864"
                     radius={[12, 12, 12, 12]}
                     maxBarSize={16}
                   />
                   <Bar
-                    dataKey="jobsViaReferral"
+                    dataKey="Jobs Via Referral"
                     fill="#C8E015"
                     radius={[12, 12, 12, 12]}
                     maxBarSize={16}

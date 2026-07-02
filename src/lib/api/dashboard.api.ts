@@ -20,3 +20,13 @@ export const uploadSignature = async (formData: FormData) => {
   const response = await API.post("/user/signature", formData);
   return response.data;
 };
+
+export const connectBankAccount = async (url: string) => {
+  const response = await API.post("/billing/create-account", { url });
+  return response.data;
+};
+
+export const getBankAccountStatus = async () => {
+  const response = await API.get("/billing/financials/details");
+  return response.data;
+};

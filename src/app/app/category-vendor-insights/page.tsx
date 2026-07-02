@@ -57,7 +57,6 @@ export default function CategoryVendorInsightsPage() {
 
   return (
     <div className={`${plusJakarta.className} relative min-h-screen overflow-hidden rounded-[50px] bg-[#EAFCFF] p-6`}>
-      <div className="pointer-events-none absolute -bottom-52 right-[-120px] h-[560px] w-[569px] rounded-full bg-[linear-gradient(180deg,#D7DF23_0%,#005864_100%)] opacity-30 blur-[220px]" />
 
       <h1 className="text-[30px] leading-[45px] font-[600] text-[#1A1A1A] mb-6">
         Category &amp; Homeowner
@@ -129,10 +128,10 @@ export default function CategoryVendorInsightsPage() {
           </>
         ) : (
           <>
-            <div className="grid h-[57px] grid-cols-[100px_1.45fr_1fr_180px] items-center rounded-[39px] bg-[rgba(0,88,100,0.06)] px-6 text-[14px] leading-[18px] font-[500] text-black">
+            <div className="grid h-[57px] grid-cols-[0.8fr_1.2fr_1fr] items-center rounded-[39px] bg-[rgba(0,88,100,0.06)] px-6 text-[14px] leading-[18px] font-[500] text-black">
               <span>Rank</span>
               <span>Homeowner Name</span>
-              <span>Category</span>
+
               <span>Total Jobs Completed</span>
             </div>
             <div className="px-5 pt-3">
@@ -148,7 +147,7 @@ export default function CategoryVendorInsightsPage() {
                 homeowner?.users?.map((row, index) => (
                   <div
                     key={row.userId}
-                    className={`grid grid-cols-[100px_1.45fr_1fr_180px] items-center py-3 text-[16px] leading-[20px] font-[400] text-black ${index !== homeowner.users.length - 1
+                    className={`grid grid-cols-[0.8fr_1.2fr_1fr] items-center py-3 text-[16px] leading-[20px] font-[400] text-black ${index !== homeowner.users.length - 1
                       ? "border-b border-[rgba(238,238,238,0.93)]"
                       : ""
                       }`}
@@ -157,7 +156,7 @@ export default function CategoryVendorInsightsPage() {
 
                     <span>{row.userName}</span>
 
-                    <span>-</span>
+
 
                     <span>{row.jobsPosted}</span>
                   </div>

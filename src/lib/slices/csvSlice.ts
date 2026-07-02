@@ -22,6 +22,7 @@ interface CsvState {
     uploadError: string | null;
     csvTemplate: Blob | null;
     templateLoading: boolean;
+    uploadResult: any | null;
 }
 
 const initialState: CsvState = {
@@ -33,6 +34,7 @@ const initialState: CsvState = {
     uploadError: null,
     csvTemplate: null,
     templateLoading: false,
+    uploadResult: null,
 };
 
 export const fetchInvitations = createAsyncThunk(
@@ -97,6 +99,7 @@ const csvSlice = createSlice({
         clearCsvError: (state) => {
             state.error = null;
             state.uploadError = null;
+            state.uploadResult = null;
         },
     },
     extraReducers: (builder) => {
@@ -108,20 +111,22 @@ const csvSlice = createSlice({
             .addCase(fetchInvitations.fulfilled, (state, action) => {
                 state.loading = false;
                 const payloadData = action.payload || {};
-                state.invitations = payloadData.invitations || [];
-                state.total = payloadData.total || 0;
+                console.log("fetchInvitations payload:", payloadData);
+                state.invitations = payloadData.invitations || payloadData.data || [];
+                state.total = payloadData.pagination?.totalItems ?? payloadData.total ?? payloadData.totalCount ?? payloadData.count ?? payloadData.totalItems ?? (Array.isArray(payloadData.invitations) ? payloadData.invitations.length : 0);
             })
             .addCase(fetchInvitations.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.payload as string;
             })
-            // Upload CSV
             .addCase(uploadCsv.pending, (state) => {
                 state.uploading = true;
                 state.uploadError = null;
+                state.uploadResult = null;
             })
-            .addCase(uploadCsv.fulfilled, (state) => {
+            .addCase(uploadCsv.fulfilled, (state, action) => {
                 state.uploading = false;
+                state.uploadResult = action.payload.data;
             })
             .addCase(uploadCsv.rejected, (state, action) => {
                 state.uploading = false;

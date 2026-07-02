@@ -117,15 +117,24 @@ export default function ReferralTrackingPage() {
     );
   }, [dispatch, revenueGroupBy]);
 
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchValue);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchValue]);
+
   useEffect(() => {
     dispatch(
       fetchReferralActivity({
         page: currentPage,
         limit: rowsPerPage,
-        search: searchValue,
+        search: debouncedSearch,
       })
     );
-  }, [dispatch, currentPage, searchValue]);
+  }, [dispatch, currentPage, debouncedSearch]);
 
   const referralCode = apiReferralCode || "";
 
@@ -223,9 +232,9 @@ export default function ReferralTrackingPage() {
             <div className="flex h-full items-center justify-center text-sm text-red-500">
               {chartsError}
             </div>
-          ) : revenueAnalysis.length === 0 ? (
+          ) : !revenueAnalysis || revenueAnalysis.length === 0 ? (
             <div className="flex h-full items-center justify-center text-sm text-black/40">
-              No revenue data available.
+              No Revenue Data Available.
             </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
@@ -369,10 +378,10 @@ export default function ReferralTrackingPage() {
                 <span>${Number(user.revenueGenerated || 0).toFixed(2)}</span>
               </div>
             ))}
-            {!activityLoading && activity.length === 0 ? (
-              <p className="py-10 text-center text-[15px] text-black/60">
-                {activityError || "No referrals found for current filters."}
-              </p>
+            {!activityLoading && (!activity || activity.length === 0) ? (
+              <div className="flex h-full items-center justify-center py-14 text-[15px] text-black/60">
+                {activityError || "No Referral Activity Found."}
+              </div>
             ) : null}
           </div>
         </div>

@@ -3,6 +3,7 @@ import "./globals.css";
 import StoreProvider from "./StoreProvider";
 import { Toaster } from "sonner";
 import AuthProvider from "@/components/AuthProvider";
+import NetworkGuard from "@/components/NetworkGuard";
 
 export const metadata: Metadata = {
   title: "NexaHome Partner | CRM & Business Intelligence Dashboard",
@@ -23,21 +24,23 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <StoreProvider>
           <AuthProvider>
-            {children}
-         <Toaster
-  position="bottom-right"
-  richColors
-  toastOptions={{
-    classNames: {
-      toast:
-        "!bg-[#005F6B] !text-white !border-0 !rounded-2xl !shadow-lg !px-5 !py-4",
-      error: "!bg-[#005F6B]",
-      title: "!text-white !text-[18px] !font-semibold",
-      description: "!text-white/90",
-      closeButton: "!text-white",
-    },
-  }}
-/>
+            <NetworkGuard>
+              {children}
+              <Toaster
+                position="bottom-right"
+                richColors
+                toastOptions={{
+                  classNames: {
+                    toast:
+                      "!bg-[#005F6B] !text-white !border-0 !rounded-2xl !shadow-lg !px-5 !py-4",
+                    error: "!bg-[#005F6B]",
+                    title: "!text-white !text-[18px] !font-semibold",
+                    description: "!text-white/90",
+                    closeButton: "!text-white",
+                  },
+                }}
+              />
+            </NetworkGuard>
           </AuthProvider>
         </StoreProvider>
       </body>

@@ -43,12 +43,16 @@ const initialState: ReferralTrackingState = {
   chartsError: null,
 };
 
-// "2026-06" → "Jun 2026"
+// "2026-06" → "Jun"
 function formatPeriod(period: string): string {
   if (!period) return "";
-  const [year, month] = period.split("-");
+  const parts = period.split("-");
+  if (parts.length === 1) {
+    return parts[0]; // If only year is provided (e.g., "2026")
+  }
+  const [year, month] = parts;
   const date = new Date(Number(year), Number(month) - 1, 1);
-  return date.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+  return date.toLocaleDateString("en-US", { month: "short" });
 }
 
 export const fetchReferralCode = createAsyncThunk(
