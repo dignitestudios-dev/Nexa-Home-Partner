@@ -46,7 +46,7 @@ export default function RegisterPage() {
       phoneNumber: "",
     },
   });
-const nameValue = watch("name") || "";
+  const nameValue = watch("name") || "";
   /* ---------------- LOGOUT ---------------- */
   const handleLogout = () => {
     // remove redux data + token
@@ -81,61 +81,61 @@ const nameValue = watch("name") || "";
   //     setLogoPreviewUrl(URL.createObjectURL(file));
   //   }
   // };
-const handleImageChange = async (
-  e: React.ChangeEvent<HTMLInputElement>
-) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
+  const handleImageChange = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  // ❌ Only image check
-  if (!file.type.startsWith("image/")) {
-    toast.error("Only image files are allowed");
-    return;
-  }
-
-  // ❌ Block GIF explicitly (if needed)
-  if (file.type === "image/gif") {
-    toast.error("GIF images are not allowed");
-    return;
-  }
-
-  const minSize = 10 * 1024;
-  const maxSize = 25 * 1024 * 1024;
-
-  if (file.size < minSize) {
-    toast.error("Image is too small (min 10KB)");
-    return;
-  }
-
-  if (file.size > maxSize) {
-    toast.error("Image is too large (max 25MB)");
-    return;
-  }
-
-  const img = new Image();
-  const objectUrl = URL.createObjectURL(file);
-
-  img.onload = () => {
-    const width = img.width;
-    const height = img.height;
-
-    URL.revokeObjectURL(objectUrl);
-
-    if (width < 256 || height < 256) {
-      toast.error("Image resolution must be at least 256x256 px");
+    // ❌ Only image check
+    if (!file.type.startsWith("image/")) {
+      toast.error("Only image files are allowed");
       return;
     }
 
-    setValue("profilePicture", file, { shouldValidate: true });
-    setLogoPreviewUrl(URL.createObjectURL(file));
-  };
+    // ❌ Block GIF explicitly (if needed)
+    if (file.type === "image/gif") {
+      toast.error("GIF images are not allowed");
+      return;
+    }
 
-  img.onerror = () => {
-    toast.error("Invalid image file");
-  };
+    const minSize = 10 * 1024;
+    const maxSize = 25 * 1024 * 1024;
 
-  img.src = objectUrl;
-};
+    if (file.size < minSize) {
+      toast.error("Image is too small (min 10KB)");
+      return;
+    }
+
+    if (file.size > maxSize) {
+      toast.error("Image is too large (max 25MB)");
+      return;
+    }
+
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    img.onload = () => {
+      const width = img.width;
+      const height = img.height;
+
+      URL.revokeObjectURL(objectUrl);
+
+      if (width < 256 || height < 256) {
+        toast.error("Image resolution must be at least 256x256 px");
+        return;
+      }
+
+      setValue("profilePicture", file, { shouldValidate: true });
+      setLogoPreviewUrl(URL.createObjectURL(file));
+    };
+
+    img.onerror = () => {
+      toast.error("Invalid image file");
+    };
+
+    img.src = objectUrl;
+  };
   const onSubmit = async (data: CompleteProfileFormData) => {
     console.log("Form data:", data); // CHECK KARO name aa raha hai?
     // Clear previous errors
@@ -181,13 +181,13 @@ const handleImageChange = async (
     };
   }, [logoPreviewUrl]);
   const [displayEmail, setDisplayEmail] = useState<string | null>(null);
-useEffect(() => {
-  const user = getLocalStorage("user");
-console.log(user,"user")
-  if (user?.email) {
-    setDisplayEmail(user.email);
-  }
-}, []);
+  useEffect(() => {
+    const user = getLocalStorage("user");
+    console.log(user, "user")
+    if (user?.email) {
+      setDisplayEmail(user.email);
+    }
+  }, []);
 
   return (
     <form
@@ -245,34 +245,34 @@ console.log(user,"user")
         <div className="mt-3">
           {/* Full Name */}
           <div className="mb-4">
-  <label className="text-[14px] font-[500] leading-[22px] text-[#1C1C1C]">
-    Full Name
-  </label>
+            <label className="text-[14px] font-[500] leading-[22px] text-[#1C1C1C]">
+              Full Name
+            </label>
 
-  <Input
-    type="text"
-    placeholder="Ryan Cooper"
-    minLength={2}
-    maxLength={64}
-    defaultValue={user?.fullName || ""}
-    className="mt-[6px] h-[48px] rounded-[12px] bg-[#F8F8F8] border-0 px-4 text-[16px] placeholder:text-[#181818]/50 focus-visible:ring-0 focus-visible:border-transparent shadow-none"
-    {...register("name")}
-  />
+            <Input
+              type="text"
+              placeholder="Ryan Cooper"
+              minLength={2}
+              maxLength={64}
+              defaultValue={user?.fullName || ""}
+              className="mt-[6px] h-[48px] rounded-[12px] bg-[#F8F8F8] border-0 px-4 text-[16px] placeholder:text-[#181818]/50 focus-visible:ring-0 focus-visible:border-transparent shadow-none"
+              {...register("name")}
+            />
 
-  <div className="flex items-center justify-end  mt-1">
-   
+            <div className="flex items-center justify-end  mt-1">
 
-    <p className="text-[12px] text-[#181818]/50">
-      {nameValue.length}/64
-    </p>
-  </div>
 
-  {errors.name && (
-    <div className="text-red-600 text-sm mt-1.5">
-      {errors.name.message}
-    </div>
-  )}
-</div>
+              <p className="text-[12px] text-[#181818]/50">
+                {nameValue.length}/64
+              </p>
+            </div>
+
+            {errors.name && (
+              <div className="text-red-600 text-sm mt-1.5">
+                {errors.name.message}
+              </div>
+            )}
+          </div>
 
           {/* Email (Read-only) */}
           <div className="mb-4">
@@ -307,7 +307,7 @@ console.log(user,"user")
                 type="text"
                 inputMode="numeric"
                 maxLength={10}
-             
+
                 className="h-[48px] flex-1 rounded-[12px] bg-[#F8F8F8] border-0 px-4 text-[16px] placeholder:text-[#181818]/50 focus-visible:ring-0 focus-visible:border-transparent shadow-none"
                 {...register("phoneNumber")}
                 onChange={(e) => {
@@ -324,40 +324,40 @@ console.log(user,"user")
             )}
           </div>
 
-      {/* Terms */}
-<div className="mt-0.5 mb-3">
-  <label className="flex items-start gap-2 cursor-pointer">
-    <input
-      type="checkbox"
-      required
-      className="mt-0.5 h-5 w-5 rounded-[4px] border border-[#181818]/80 accent-[#005864]"
-    />
+          {/* Terms */}
+          <div className="mt-0.5 mb-3">
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                required
+                className="mt-0.5 h-5 w-5 rounded-[4px] border border-[#181818]/80 accent-[#005864]"
+              />
 
-    <span className="text-[15px] leading-[19px] text-black/80">
-      I accept the{" "}
-      
-      <a
-        href="https://www.nexahomeapp.com/terms-and-conditions"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-[#005864] font-[500]"
-      >
-        Terms & Conditions
-      </a>{" "}
-      
-      and{" "}
-      
-      <a
-        href="https://www.nexahomeapp.com/privacy-policy"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-[#005864] font-[500]"
-      >
-        Privacy Policy
-      </a>
-    </span>
-  </label>
-</div>
+              <span className="text-[15px] leading-[19px] text-black/80">
+                I accept the{" "}
+
+                <a
+                  href="https://www.nexahomeapp.com/partner/terms-and-conditions"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#005864] font-[500]"
+                >
+                  Terms & Conditions
+                </a>{" "}
+
+                and{" "}
+
+                <a
+                  href="https://www.nexahomeapp.com/partner/privacy-policy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[#005864] font-[500]"
+                >
+                  Privacy Policy
+                </a>
+              </span>
+            </label>
+          </div>
 
           {/* Global Error Message */}
           {error && (

@@ -60,6 +60,7 @@ export const fetchReferralCode = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const response = await getReferralCode();
+      console.log(response.data);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(
@@ -89,11 +90,11 @@ export const fetchRevenueAnalysis = createAsyncThunk(
 export const fetchReferralActivity = createAsyncThunk(
   "referralTracking/fetchReferralActivity",
   async (
-    { page, limit, search }: { page: number; limit: number; search: string },
+    { page, limit, search, startDate, endDate }: { page: number; limit: number; search: string; startDate?: string; endDate?: string },
     { rejectWithValue }
   ) => {
     try {
-      const response = await getReferralActivity(page, limit, search);
+      const response = await getReferralActivity(page, limit, search, startDate, endDate);
       return response.data;
     } catch (error: any) {
       return rejectWithValue(
@@ -157,6 +158,8 @@ const referralTrackingSlice = createSlice({
           month: formatPeriod(item.period),   // "2026-06" → "Jun 2026"
           revenue: item.revenue ?? 0,
           signups: item.signups ?? 0,
+          codeReferrals: item.codeReferrals ?? 0,
+          linkReferrals: item.linkReferrals ?? 0,
           jobs: item.jobs ?? 0,
         }));
       })

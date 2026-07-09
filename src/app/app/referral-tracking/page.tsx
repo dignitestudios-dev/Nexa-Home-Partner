@@ -10,6 +10,7 @@ import {
   Search,
   Loader2,
 } from "lucide-react";
+import { toast } from "sonner";
 import {
   Area,
   AreaChart,
@@ -25,6 +26,7 @@ import {
   fetchReferralCode,
   fetchReferralActivity,
   fetchRevenueAnalysis,
+  clearReferralError,
 } from "@/lib/slices/referral-trackingSlice";
 import {
   DropdownMenu,
@@ -95,11 +97,13 @@ export default function ReferralTrackingPage() {
     revenueAnalysis,
     chartsLoading,
     chartsError,
+    error,
   } = useSelector((state: RootState) => state.referralTracking);
 
   const [copiedItem, setCopiedItem] = useState<"code" | "link" | null>(null);
   const [searchValue, setSearchValue] = useState("");
-  const [selectedDate, setSelectedDate] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [revenueGroupBy, setRevenueGroupBy] = useState<GroupBy>("month");
 
@@ -132,11 +136,29 @@ export default function ReferralTrackingPage() {
         page: currentPage,
         limit: rowsPerPage,
         search: debouncedSearch,
+        startDate,
+        endDate,
       })
     );
-  }, [dispatch, currentPage, debouncedSearch]);
+  }, [dispatch, currentPage, debouncedSearch, startDate, endDate]);
+
+  useEffect(() => {
+    if (activityError) {
+      toast.error(activityError);
+      dispatch(clearReferralError());
+    }
+    if (chartsError) {
+      toast.error(chartsError);
+      dispatch(clearReferralError());
+    }
+    if (error) {
+      toast.error(error);
+      dispatch(clearReferralError());
+    }
+  }, [activityError, chartsError, error, dispatch]);
 
   const referralCode = apiReferralCode || "";
+  const referralLink = `https://nexa-home-homeowner.vercel.app/login?referralCode=${referralCode}`;
 
   const handleCopy = async (value: string, item: "code" | "link") => {
     try {
@@ -150,6 +172,7 @@ export default function ReferralTrackingPage() {
       console.error("Copy failed:", error);
     }
   };
+  console.log(revenueAnalysis, 'revenueAnalysis');
 
   const handleGroupByChange = (value: GroupBy) => {
     if (value === revenueGroupBy) return;
@@ -174,6 +197,14 @@ export default function ReferralTrackingPage() {
           onCopy={() => void handleCopy(referralCode, "code")}
           isLoading={loading}
         />
+
+        <ReferralSummaryCard
+          label="Referral Link"
+          value={referralLink}
+          actionLabel="Copy"
+          isCopied={copiedItem === "link"}
+          onCopy={() => void handleCopy(referralLink, "link")}
+        />
       </section>
 
       {/* ── Revenue Analysis Chart ── */}
@@ -190,7 +221,11 @@ export default function ReferralTrackingPage() {
               </span>
               <span className="flex items-center gap-1.5 text-[13px] text-black/60">
                 <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#D7DF23]" />
-                Signup Users
+                Referrals Code
+              </span>
+              <span className="flex items-center gap-1.5 text-[13px] text-black/60">
+                <span className="inline-block h-2.5 w-2.5 rounded-full bg-[#00b4ccff]" />
+                Referrals Link
               </span>
             </div>
           </div>
@@ -247,9 +282,13 @@ export default function ReferralTrackingPage() {
                     <stop offset="5%" stopColor="#005864" stopOpacity={0.28} />
                     <stop offset="95%" stopColor="#005864" stopOpacity={0.02} />
                   </linearGradient>
-                  <linearGradient id="referralSignupFill" x1="0" y1="0" x2="0" y2="1">
+                  <linearGradient id="referralCodeFill" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#D7DF23" stopOpacity={0.34} />
                     <stop offset="95%" stopColor="#D7DF23" stopOpacity={0.03} />
+                  </linearGradient>
+                  <linearGradient id="referralLinkFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#00b4ccff" stopOpacity={0.34} />
+                    <stop offset="95%" stopColor="#00b4ccff" stopOpacity={0.03} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="5 6" stroke="#E6E6E6" vertical={false} />
@@ -272,7 +311,8 @@ export default function ReferralTrackingPage() {
                   }}
                   formatter={(value, name) => {
                     if (name === "revenue") return [`$${Number(value || 0).toFixed(2)}`, "Revenue"];
-                    if (name === "signups") return [value, "Signup Users"];
+                    if (name === "codeReferrals") return [value, "Referral Code"];
+                    if (name === "linkReferrals") return [value, "Referral Link"];
                     return [value, name];
                   }}
                 />
@@ -288,12 +328,22 @@ export default function ReferralTrackingPage() {
                 />
                 <Area
                   type="monotone"
-                  dataKey="signups"
-                  name="signups"
+                  dataKey="codeReferrals"
+                  name="codeReferrals"
                   stroke="#D7DF23"
                   strokeWidth={3}
-                  fill="url(#referralSignupFill)"
+                  fill="url(#referralCodeFill)"
                   dot={{ r: 3, fill: "#D7DF23" }}
+                  activeDot={{ r: 6 }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="linkReferrals"
+                  name="linkReferrals"
+                  stroke="#00b4ccff"
+                  strokeWidth={3}
+                  fill="url(#referralLinkFill)"
+                  dot={{ r: 3, fill: "#00b4ccff" }}
                   activeDot={{ r: 6 }}
                 />
               </AreaChart>
@@ -321,22 +371,47 @@ export default function ReferralTrackingPage() {
               />
               <Search size={20} className="text-black/80" />
             </div>
-            <label className="relative inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-[10px] bg-[#005864] text-white shadow-[0px_4px_45px_6px_rgba(0,88,100,0.08)]">
-              <Calendar size={20} />
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(event) => {
-                  setSelectedDate(event.target.value);
-                  setCurrentPage(1);
-                }}
-                className="absolute inset-0 cursor-pointer opacity-0"
-              />
-            </label>
-            {selectedDate ? (
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 rounded-[10px] bg-white px-3 py-1.5 shadow-[0px_4px_45px_6px_rgba(0,88,100,0.08)]">
+                <span className="text-[13px] text-black/80 font-medium min-w-[70px]">
+                  {startDate ? `${startDate.split('-')[1]}/${startDate.split('-')[2]}/${startDate.split('-')[0]}` : "Start Date"}
+                </span>
+                <label className="relative inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-[8px] bg-[#005864] text-white transition-opacity hover:opacity-90">
+                  <Calendar size={14} />
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(event) => {
+                      setStartDate(event.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="absolute inset-0 cursor-pointer opacity-0"
+                  />
+                </label>
+              </div>
+              <span className="text-black/30">-</span>
+              <div className="flex items-center gap-2 rounded-[10px] bg-white px-3 py-1.5 shadow-[0px_4px_45px_6px_rgba(0,88,100,0.08)]">
+                <span className="text-[13px] text-black/80 font-medium min-w-[70px]">
+                  {endDate ? `${endDate.split('-')[1]}/${endDate.split('-')[2]}/${endDate.split('-')[0]}` : "End Date"}
+                </span>
+                <label className="relative inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-[8px] bg-[#005864] text-white transition-opacity hover:opacity-90">
+                  <Calendar size={14} />
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(event) => {
+                      setEndDate(event.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="absolute inset-0 cursor-pointer opacity-0"
+                  />
+                </label>
+              </div>
+            </div>
+            {startDate || endDate ? (
               <button
                 type="button"
-                onClick={() => { setSelectedDate(""); setCurrentPage(1); }}
+                onClick={() => { setStartDate(""); setEndDate(""); setCurrentPage(1); }}
                 className="h-11 rounded-[10px] bg-[#005864]/10 px-3 text-[12px] font-medium text-[#005864]"
               >
                 Clear

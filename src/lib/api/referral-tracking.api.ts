@@ -5,8 +5,16 @@ export const getReferralCode = async () => {
   return response.data;
 };
 
-export const getReferralActivity = async (page = 1, limit = 10, search = "") => {
-  const response = await API.get(`/partner/referral/activity?page=${page}&limit=${limit}&search=${search}`);
+export const getReferralActivity = async (page = 1, limit = 10, search = "", startDate = "", endDate = "") => {
+  const queryParams = new URLSearchParams({
+    page: page.toString(),
+    limit: limit.toString(),
+  });
+  if (search) queryParams.append("search", search);
+  if (startDate) queryParams.append("startDate", startDate);
+  if (endDate) queryParams.append("endDate", endDate);
+  
+  const response = await API.get(`/partner/referral/activity?${queryParams.toString()}`);
   return response.data;
 };
 export const getRevenueAnalysis = async (groupBy: string = "month", months: number = 12) => {

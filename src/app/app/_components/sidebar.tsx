@@ -7,6 +7,7 @@ import {
   ArrowUpToLine,
   CircleDollarSign,
   FileText,
+  Wallet,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -30,6 +31,11 @@ const menu = [
   },
   { label: "CSV Upload", icon: ArrowUpToLine, link: "/app/csv-upload" },
   {
+    label: "Earnings",
+    icon: Wallet,
+    link: "/app/earnings",
+  },
+  {
     label: "Revenue Summary",
     icon: CircleDollarSign,
     link: "/app/revenue-summary",
@@ -37,7 +43,8 @@ const menu = [
   {
     label: "Terms & Conditions",
     icon: FileText,
-    link: "/app/terms-and-conditions",
+    link: "https://www.nexahomeapp.com/partner/terms-and-conditions",
+    external: true,
   },
 ];
 
@@ -66,15 +73,16 @@ export default function Sidebar() {
             <Link
               key={i}
               href={item.link}
-              className={`flex items-center gap-2 px-4 py-3.5 rounded-full cursor-pointer transition-all duration-200 ${
-                isActive
-                  ? "bg-gradient-to-r from-[#00A299] to-[#40B480] text-white shadow-lg"
-                  : "hover:bg-white/5 text-gray-100/90"
-              }`}
+              target={item.external ? "_blank" : undefined}
+              rel={item.external ? "noopener noreferrer" : undefined}
+              className={`flex items-center gap-2 px-4 py-3.5 rounded-full cursor-pointer transition-all duration-200 ${isActive && !item.external
+                ? "bg-gradient-to-r from-[#00A299] to-[#40B480] text-white shadow-lg"
+                : "hover:bg-gradient-to-r from-[#00A299] to-[#40B480] text-white "
+                }`}
             >
-              <Icon size={18} strokeWidth={isActive ? 2 : 1.5} />
+              <Icon size={18} strokeWidth={isActive && !item.external ? 2 : 1.5} />
               <span
-                className={`text-[14px] ${isActive ? "font-normal" : "font-normal"}`}
+                className={`text-[14px] ${isActive && !item.external ? "font-normal" : "font-normal"}`}
               >
                 {item.label}
               </span>

@@ -15,7 +15,10 @@ import { Input } from "@/components/ui/input";
 
 // Define the edit profile schema with overview and optional profile picture
 const editProfileSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
+  name: z
+    .string()
+    .min(2, "Name must be at least 2 characters")
+    .regex(/^[a-zA-Z\s]+$/, "Name cannot contain symbols or numbers"),
   phoneNumber: z
     .string()
     .min(7, "Phone number is required")

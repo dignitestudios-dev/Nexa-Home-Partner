@@ -4,6 +4,7 @@ import dashboardReducer from './slices/dashboardSlice';
 import referralTrackingReducer from './slices/referral-trackingSlice';
 import categoryHomeowerReducer from './slices/category-homeowerSlice';
 import csvReducer from './slices/csvSlice';
+import earningsReducer from './slices/earningsSlice';
 
 export const store = configureStore({
   reducer: {
@@ -12,6 +13,7 @@ export const store = configureStore({
     referralTracking: referralTrackingReducer,
     categoryHomeower: categoryHomeowerReducer,
     csv: csvReducer,
+    earnings: earningsReducer,
   },
 });
 

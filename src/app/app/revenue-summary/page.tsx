@@ -171,7 +171,7 @@ export default function RevenueSummaryPage() {
               </div>
             ) : !chartData || chartData.length === 0 ? (
               <div className="flex h-full items-center justify-center text-sm text-black/40">
-                No Revenue Data Available!
+                No Revenue Data Available.
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
