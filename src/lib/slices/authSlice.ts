@@ -20,24 +20,43 @@ import { removeLocalStorage } from "@/utils/localStorage";
 
 // ------------------ Types ------------------
 export interface User {
-  id: number;
+  id?: number | string;
+  _id?: string;
   fullName?: string;
+  name?: string;
   email: string;
-  isVerified: boolean;
-  isProfileComplete: boolean;
-  profilePicture?: string;
+  isVerified?: boolean;
+  isProfileComplete?: boolean;
+  isProfileCompleted?: boolean;
+  isPartnerActive?: boolean;
+  isPartnerApproved?: boolean;
+  stripeAccountStatus?: string;
+  stripeAccountId?: string | null;
+  profilePicture?: any;
   phone?: string;
   overview?: string;
   signature?: string;
+  role?: string;
   data?: {
+    _id?: string;
+    id?: number | string;
     name?: string;
     email?: string;
     phone?: string;
     signature?: string;
+    role?: string;
+    isPartnerActive?: boolean;
+    isPartnerApproved?: boolean;
+    stripeAccountStatus?: string;
+    stripeAccountId?: string | null;
+    isProfileCompleted?: boolean;
     profilePicture?: {
       location?: string;
+      [key: string]: any;
     };
+    [key: string]: any;
   };
+  [key: string]: any;
 }
 
 interface AuthState {

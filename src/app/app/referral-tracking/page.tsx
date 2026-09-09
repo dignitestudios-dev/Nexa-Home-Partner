@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   Calendar,
   ChevronDown,
@@ -9,6 +10,8 @@ import {
   Copy,
   Search,
   Loader2,
+  Landmark,
+  AlertCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -34,6 +37,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { connectBankAccount } from "@/lib/api/dashboard.api";
+import { usePartnerStatus } from "@/hooks/usePartnerStatus";
 
 const rowsPerPage = 10;
 
@@ -76,7 +81,7 @@ function ReferralSummaryCard({
         type="button"
         onClick={onCopy}
         disabled={isLoading || !value}
-        className="flex h-[68px] w-[91px] items-center justify-center gap-2 rounded-[16px] bg-[#005864]/[0.06] text-[16px] leading-[20px] font-semibold text-[#005864] disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex h-[68px] w-[91px] items-center justify-center gap-2 rounded-[16px] bg-[#005864]/[0.06] text-[16px] leading-[20px] font-semibold text-[#005864] disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
       >
         <Copy size={16} />
         {isCopied ? "Copied" : actionLabel}
@@ -86,7 +91,10 @@ function ReferralSummaryCard({
 }
 
 export default function ReferralTrackingPage() {
+  const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
+  const { isPartnerActive, isStripeApproved, loading: statusLoading } = usePartnerStatus();
+  const [isConnectingBank, setIsConnectingBank] = useState(false);
   const {
     referralCode: apiReferralCode,
     loading,
@@ -108,8 +116,32 @@ export default function ReferralTrackingPage() {
   const [revenueGroupBy, setRevenueGroupBy] = useState<GroupBy>("month");
 
   useEffect(() => {
-    dispatch(fetchReferralCode());
-  }, [dispatch]);
+    if (!isPartnerActive && !statusLoading) {
+      router.replace("/app/dashboard");
+    }
+  }, [isPartnerActive, statusLoading, router]);
+
+  const handleConnectBank = async () => {
+    try {
+      setIsConnectingBank(true);
+      const res = await connectBankAccount(`${window.location.origin}/app/referral-tracking`);
+      if (res.data?.url) {
+        window.location.href = res.data.url;
+      } else {
+        toast.success(res.message || "Connected successfully");
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to connect bank account");
+    } finally {
+      setIsConnectingBank(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isPartnerActive && isStripeApproved) {
+      dispatch(fetchReferralCode());
+    }
+  }, [dispatch, isPartnerActive, isStripeApproved]);
 
   // groupBy change hone par naya API call
   useEffect(() => {
@@ -188,24 +220,53 @@ export default function ReferralTrackingPage() {
         Referral Tracking
       </h1>
 
-      <section className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-[357px_1fr]">
-        <ReferralSummaryCard
-          label="Referral Code"
-          value={referralCode}
-          actionLabel="Copy"
-          isCopied={copiedItem === "code"}
-          onCopy={() => void handleCopy(referralCode, "code")}
-          isLoading={loading}
-        />
+      {!isStripeApproved && (
+        <div className="mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 rounded-2xl bg-amber-50 border border-amber-200/80 p-5 text-amber-900 shadow-sm">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <h4 className="font-bold text-amber-900 text-[15px]">Bank Connection Required</h4>
+              <p className="text-sm text-amber-800 mt-0.5">
+                Connect your bank account with Stripe to unlock your referral code, share your referral link, and receive commission payouts.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleConnectBank}
+            disabled={isConnectingBank}
+            className="flex h-[44px] items-center justify-center gap-2 rounded-xl bg-[#005864] px-5 text-[14px] font-semibold text-white hover:bg-[#004852] transition-all disabled:opacity-50 cursor-pointer shrink-0 shadow-sm self-end sm:self-auto"
+          >
+            {isConnectingBank ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Landmark size={16} />
+            )}
+            Connect Bank Account
+          </button>
+        </div>
+      )}
 
-        <ReferralSummaryCard
-          label="Referral Link"
-          value={referralLink}
-          actionLabel="Copy"
-          isCopied={copiedItem === "link"}
-          onCopy={() => void handleCopy(referralLink, "link")}
-        />
-      </section>
+      {isStripeApproved && (
+        <section className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-[357px_1fr]">
+          <ReferralSummaryCard
+            label="Referral Code"
+            value={referralCode}
+            actionLabel="Copy"
+            isCopied={copiedItem === "code"}
+            onCopy={() => void handleCopy(referralCode, "code")}
+            isLoading={loading}
+          />
+
+          <ReferralSummaryCard
+            label="Referral Link"
+            value={referralLink}
+            actionLabel="Copy"
+            isCopied={copiedItem === "link"}
+            onCopy={() => void handleCopy(referralLink, "link")}
+          />
+        </section>
+      )}
 
       {/* ── Revenue Analysis Chart ── */}
       <section className="mt-5 rounded-[24px] bg-white p-5">
