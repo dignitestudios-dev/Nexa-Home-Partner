@@ -1,6 +1,7 @@
 import Sidebar from "./_components/sidebar";
 import Navbar from "./_components/navbar";
 import SignatureGuard from "./_components/signature-guard";
+import PartnerActiveGuard from "./_components/partner-active-guard";
 
 export default function RootLayout({
   children,
@@ -20,9 +21,11 @@ export default function RootLayout({
             <Navbar />
 
             {/* Page Content */}
-            <SignatureGuard>
-              <div className="mt-6 ">{children}</div>
-            </SignatureGuard>
+            <PartnerActiveGuard>
+              <SignatureGuard>
+                <div className="mt-6 ">{children}</div>
+              </SignatureGuard>
+            </PartnerActiveGuard>
           </div>
         </div>
       </body>

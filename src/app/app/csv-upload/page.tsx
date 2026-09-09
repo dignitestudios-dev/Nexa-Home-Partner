@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Calendar,
   ChevronLeft,
@@ -12,6 +13,7 @@ import {
   X,
   Loader2,
   Download,
+  Landmark,
 } from "lucide-react";
 import {
   Dialog,
@@ -23,6 +25,8 @@ import {
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/lib/store";
 import { fetchCsvTemplate, fetchInvitations, uploadCsv } from "@/lib/slices/csvSlice";
+import { connectBankAccount } from "@/lib/api/dashboard.api";
+import { usePartnerStatus } from "@/hooks/usePartnerStatus";
 import { toast } from "sonner";
 
 
@@ -31,7 +35,10 @@ const categories = ["Category A", "Category B", "Category C", "Category D", "Cat
 const ITEMS_PER_PAGE = 10;
 
 export default function CsvUploadPage() {
+  const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
+  const { isPartnerActive, isStripeApproved, loading: statusLoading } = usePartnerStatus();
+  const [isConnectingBank, setIsConnectingBank] = useState(false);
   const { invitations, total, loading, error, uploadError, uploading, uploadResult } = useSelector((state: RootState) => state.csv);
 
   const [searchValue, setSearchValue] = useState("");
@@ -73,6 +80,28 @@ export default function CsvUploadPage() {
 
   console.log("CSVdasdsadsa upload failed:123", uploadError);
   useEffect(() => {
+    if (!isPartnerActive && !statusLoading) {
+      router.replace("/app/dashboard");
+    }
+  }, [isPartnerActive, statusLoading, router]);
+
+  const handleConnectBank = async () => {
+    try {
+      setIsConnectingBank(true);
+      const res = await connectBankAccount(`${window.location.origin}/app/csv-upload`);
+      if (res.data?.url) {
+        window.location.href = res.data.url;
+      } else {
+        toast.success(res.message || "Connected successfully");
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to connect bank account");
+    } finally {
+      setIsConnectingBank(false);
+    }
+  };
+
+  useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchValue);
     }, 500);
@@ -85,6 +114,7 @@ export default function CsvUploadPage() {
   };
 
   useEffect(() => {
+    if (!isPartnerActive || !isStripeApproved) return;
     dispatch(
       fetchInvitations({
         page: currentPage,
@@ -93,7 +123,7 @@ export default function CsvUploadPage() {
         search: debouncedSearch,
       })
     );
-  }, [dispatch, currentPage, debouncedSearch]);
+  }, [dispatch, currentPage, debouncedSearch, isPartnerActive, isStripeApproved]);
   useEffect(() => {
     setCurrentPage(1);
   }, [debouncedSearch]);
@@ -168,6 +198,26 @@ export default function CsvUploadPage() {
 
   const totalPages = Math.max(1, Math.ceil(total / ITEMS_PER_PAGE));
   const safePage = Math.min(currentPage, totalPages);
+
+  if (!isStripeApproved) {
+    return (
+      <div className="relative min-h-[80vh] flex flex-col items-center justify-center rounded-[50px] bg-[#EAFCFF] p-6">
+        <button
+          type="button"
+          onClick={handleConnectBank}
+          disabled={isConnectingBank}
+          className="inline-flex h-[52px] items-center justify-center gap-3 rounded-2xl bg-[#005864] px-8 text-[16px] font-[700] text-white shadow-lg shadow-[#005864]/20 hover:bg-[#004852] transition-all disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+        >
+          {isConnectingBank ? (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          ) : (
+            <Landmark className="w-5 h-5" />
+          )}
+          Connect Bank Account
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen overflow-hidden rounded-[50px] bg-[#EAFCFF] p-6">

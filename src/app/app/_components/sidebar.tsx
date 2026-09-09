@@ -13,6 +13,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 
+import { usePartnerStatus } from "@/hooks/usePartnerStatus";
+import { Lock } from "lucide-react";
+import { toast } from "sonner";
+
 const menu = [
   {
     label: "Dashboard",
@@ -50,6 +54,7 @@ const menu = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { isPartnerActive } = usePartnerStatus();
 
   return (
     <aside className="h-screen overflow-y-auto w-[300px] bg-[#004D54] text-white flex flex-col p-6 shadow-xl hide-scrollbar">
@@ -69,6 +74,29 @@ export default function Sidebar() {
         {menu.map((item, i) => {
           const Icon = item.icon;
           const isActive = pathname === item.link;
+          const isLocked = !isPartnerActive && item.link !== "/app/dashboard" && !item.external;
+
+          if (isLocked) {
+            return (
+              <button
+                key={i}
+                type="button"
+                onClick={() =>
+                  toast.info(
+                    "Your profile is currently under review. Access will be unlocked once approved."
+                  )
+                }
+                className="flex items-center justify-between px-4 py-3.5 rounded-full cursor-not-allowed opacity-50 text-white/70 hover:bg-white/5 transition-all duration-200 text-left w-full"
+              >
+                <div className="flex items-center gap-2">
+                  <Icon size={18} strokeWidth={1.5} />
+                  <span className="text-[14px] font-normal">{item.label}</span>
+                </div>
+                <Lock size={14} className="text-white/60" />
+              </button>
+            );
+          }
+
           return (
             <Link
               key={i}
