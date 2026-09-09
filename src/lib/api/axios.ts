@@ -2,7 +2,7 @@ import axios from "axios";
 import Cookies from "js-cookie";
 
 
-export const baseURL = "https://api.staging.nexahomeapp.com"; // Replace with your actual base URL
+export const baseURL =  process.env.NEXT_PUBLIC_API_URL || "https://api.nexahomeapp.com";// Replace with your actual base URL
 
 const headers = {
   "Content-Type": "application/json",
